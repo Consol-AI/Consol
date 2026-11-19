@@ -25,27 +25,30 @@ export default async function ProductPage({
   const usedKeys = new Set(processes.map((p) => p.template_key));
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto w-full max-w-5xl space-y-8 p-5 md:p-7">
       <div>
-        <Link href="/app" className="text-sm text-[var(--quiet)] hover:underline">
-          ← Products
+        <Link
+          href="/app"
+          className="text-sm text-[var(--console-muted)] hover:text-[var(--console-accent)]"
+        >
+          ← Workspace
         </Link>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl tracking-tight">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--console-ink)]">
           {product.name}
         </h1>
-        <p className="mt-2 max-w-2xl text-[var(--quiet)]">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--console-muted)]">
           {product.description ||
             "Link the professional lifecycles this product needs."}
         </p>
       </div>
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl tracking-tight">
+        <h2 className="text-lg font-semibold tracking-tight text-[var(--console-ink)]">
           Processes on this floor
         </h2>
         {processes.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-[var(--line)] px-6 py-10 text-center">
-            <p className="text-[var(--quiet)]">
+          <div className="rounded-xl border border-dashed border-[var(--console-line)] bg-[var(--console-surface)] px-6 py-10 text-center">
+            <p className="text-sm text-[var(--console-muted)]">
               No processes yet. Add a template below to open the first board.
             </p>
           </div>
@@ -55,12 +58,14 @@ export default async function ProductPage({
               <li key={process.id}>
                 <Link
                   href={`/app/products/${product.id}/processes/${process.id}`}
-                  className="block rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 transition hover:border-[var(--ink)]"
+                  className="block rounded-xl border border-[var(--console-line)] bg-[var(--console-surface)] p-5 transition hover:border-[var(--console-accent)]/40"
                 >
-                  <p className="text-xs uppercase tracking-[0.12em] text-[var(--quiet)]">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[var(--console-muted)]">
                     {process.domain}
                   </p>
-                  <h3 className="mt-1 text-lg font-medium">{process.name}</h3>
+                  <h3 className="mt-1 text-lg font-medium text-[var(--console-ink)]">
+                    {process.name}
+                  </h3>
                 </Link>
               </li>
             ))}
@@ -69,7 +74,7 @@ export default async function ProductPage({
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl tracking-tight">
+        <h2 className="text-lg font-semibold tracking-tight text-[var(--console-ink)]">
           Add a lifecycle
         </h2>
         <div className="grid gap-3 md:grid-cols-2">
@@ -77,15 +82,17 @@ export default async function ProductPage({
             <form
               key={template.key}
               action={addProcessAction}
-              className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5"
+              className="rounded-xl border border-[var(--console-line)] bg-[var(--console-surface)] p-5"
             >
               <input type="hidden" name="productId" value={product.id} />
               <input type="hidden" name="templateKey" value={template.key} />
-              <h3 className="font-medium tracking-tight">{template.name}</h3>
-              <p className="mt-1 text-sm text-[var(--quiet)]">
+              <h3 className="font-medium tracking-tight text-[var(--console-ink)]">
+                {template.name}
+              </h3>
+              <p className="mt-1 text-sm text-[var(--console-muted)]">
                 {template.description}
               </p>
-              <p className="mt-3 text-xs text-[var(--quiet)]">
+              <p className="mt-3 text-xs text-[var(--console-muted)]">
                 {template.stages.map((s) => s.name).join(" → ")}
               </p>
               <Button

@@ -60,6 +60,19 @@
   --hero-mid: #1d3a2d;
   --hero-glow: #2f6b4f;
 
+  /* Console / workspace shell — cool, clean, ClickUp-adjacent */
+  --console-bg: #f4f6f5;
+  --console-sidebar: #ffffff;
+  --console-surface: #ffffff;
+  --console-panel: #eef2f0;
+  --console-line: #e2e8e4;
+  --console-ink: #15241c;
+  --console-muted: #66756c;
+  --console-accent: #1f6b4a;
+  --console-accent-soft: #d8eee3;
+  --console-hover: #f0f4f1;
+  --console-agent: #e4f3ec;
+
   --background: var(--paper);
   --foreground: var(--ink);
   --card: var(--surface);
@@ -108,6 +121,14 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Flat, calm workspace surface — marketing page keeps the warm wash. */
+  .console-shell {
+    background-image: none;
+    background-color: var(--console-bg);
+  }
+  .console-shell .console-sidebar {
+    box-shadow: 1px 0 0 var(--console-line);
   }
 }
 
