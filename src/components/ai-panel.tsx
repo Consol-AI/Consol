@@ -49,7 +49,8 @@ export function AiPanel({
           body: JSON.stringify({ message: content, processId, workItemId }),
         });
         if (!res.ok) {
-          throw new Error("AI request failed");
+          const detail = await res.text().catch(() => "");
+          throw new Error(detail || "AI request failed");
         }
         const contentType = res.headers.get("content-type") ?? "";
         if (contentType.includes("application/json")) {
@@ -96,8 +97,12 @@ export function AiPanel({
             prev.map((m) => (m.id === streamId ? { ...m, content: text } : m)),
           );
         }
-      } catch {
-        setError("Could not reach the AI assistant. Try again.");
+      } catch (err) {
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : "Could not reach the AI assistant. Try again.";
+        setError(message.slice(0, 240));
       }
     });
   }
