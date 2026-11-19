@@ -1,0 +1,108 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireViewer } from "@/lib/auth";
+import {
+  addProcessFromTemplate,
+  assertProductAccess,
+  createProduct,
+  createWorkItem,
+  ensureWorkspace,
+  getProcess,
+  getWorkItem,
+  listStages,
+  moveWorkItem,
+  updateWorkItem,
+} from "@/lib/factory";
+
+export async function createProductAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const org = await ensureWorkspace(viewer);
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  if (!name) throw new Error("Product name is required");
+
+  const product = await createProduct({
+    organizationId: org.id,
+    name,
+    description,
+    createdBy: viewer.sub,
+  });
+  redirect(`/app/products/${product.id}`);
+}
+
+export async function addProcessAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const productId = String(formData.get("productId") ?? "");
+  const templateKey = String(formData.get("templateKey") ?? "");
+  const product = await assertProductAccess(productId, viewer.sub);
+  if (!product) throw new Error("Forbidden");
+
+  const process = await addProcessFromTemplate({
+    productId,
+    templateKey,
+    createdBy: viewer.sub,
+  });
+  revalidatePath(`/app/products/${productId}`);
+  redirect(`/app/products/${productId}/processes/${process.id}`);
+}
+
+export async function createWorkItemAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const processId = String(formData.get("processId") ?? "");
+  const stageId = String(formData.get("stageId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!title) throw new Error("Title is required");
+
+  const process = await getProcess(processId);
+  if (!process) throw new Error("Process not found");
+  const product = await assertProductAccess(process.product_id, viewer.sub);
+  if (!product) throw new Error("Forbidden");
+
+  const stages = await listStages(processId);
+  const stage = stages.find((s) => s.id === stageId) ?? stages[0];
+  if (!stage) throw new Error("No stages");
+
+  const item = await createWorkItem({
+    processId,
+    stageId: stage.id,
+    title,
+    body,
+    createdBy: viewer.sub,
+  });
+  revalidatePath(`/app/products/${product.id}/processes/${processId}`);
+  return item.id;
+}
+
+export async function moveWorkItemAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const itemId = String(formData.get("itemId") ?? "");
+  const stageId = String(formData.get("stageId") ?? "");
+  const item = await getWorkItem(itemId);
+  if (!item) throw new Error("Item not found");
+  const process = await getProcess(item.process_id);
+  if (!process) throw new Error("Process not found");
+  const product = await assertProductAccess(process.product_id, viewer.sub);
+  if (!product) throw new Error("Forbidden");
+
+  await moveWorkItem(itemId, stageId);
+  revalidatePath(`/app/products/${product.id}/processes/${process.id}`);
+}
+
+export async function updateWorkItemAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const itemId = String(formData.get("itemId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  const item = await getWorkItem(itemId);
+  if (!item) throw new Error("Item not found");
+  const process = await getProcess(item.process_id);
+  if (!process) throw new Error("Process not found");
+  const product = await assertProductAccess(process.product_id, viewer.sub);
+  if (!product) throw new Error("Forbidden");
+
+  await updateWorkItem({ itemId, title, body });
+  revalidatePath(`/app/products/${product.id}/processes/${process.id}`);
+}
