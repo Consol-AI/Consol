@@ -19,7 +19,17 @@ type ChatBody = {
 
 export async function POST(request: Request) {
   const identity = await getIdentity(request);
-  if (!identity.verified || identity.kind !== "person") {
+  const viewer =
+    identity.verified && identity.kind === "person"
+      ? {
+          sub: identity.sub,
+          name: identity.name || identity.email || "Teammate",
+        }
+      : process.env.VERCEL || process.env.CONSOL_DEMO_AUTH === "1"
+        ? { sub: "user:demo", name: "Demo Teammate" }
+        : null;
+
+  if (!viewer) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -41,7 +51,7 @@ export async function POST(request: Request) {
     if (!process) {
       return Response.json({ error: "process not found" }, { status: 404 });
     }
-    const product = await assertProductAccess(process.product_id, identity.sub);
+    const product = await assertProductAccess(process.product_id, viewer.sub);
     if (!product) return Response.json({ error: "forbidden" }, { status: 403 });
     processId = process.id;
     contextLabel = `${item.title} (${process.name})`;
@@ -51,7 +61,7 @@ export async function POST(request: Request) {
     if (!process) {
       return Response.json({ error: "process not found" }, { status: 404 });
     }
-    const product = await assertProductAccess(process.product_id, identity.sub);
+    const product = await assertProductAccess(process.product_id, viewer.sub);
     if (!product) return Response.json({ error: "forbidden" }, { status: 403 });
     contextLabel = process.name;
     stageNames = (await listStages(process.id)).map((s) => s.name);
@@ -64,8 +74,8 @@ export async function POST(request: Request) {
     workItemId,
     role: "user",
     content: message,
-    authorSub: identity.sub,
-    authorName: identity.name || identity.email || "Teammate",
+    authorSub: viewer.sub,
+    authorName: viewer.name,
   });
 
   const model = getLanguageModel();

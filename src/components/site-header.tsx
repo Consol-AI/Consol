@@ -26,7 +26,7 @@ export function SiteHeader({
         {viewer ? (
           <>
             <span className="hidden text-[var(--quiet)] sm:inline">
-              {viewer.name}
+              {viewer.demo ? `${viewer.name} (demo)` : viewer.name}
             </span>
             <Link
               href="/app"
