@@ -29,7 +29,10 @@ export async function sql<T = Record<string, unknown>>(
 }
 
 async function startLocal(): Promise<PGlite> {
-  const dataDir = path.join(process.cwd(), ".data", "consol");
+  // On Vercel, only /tmp is writable. Local/dev uses a durable .data folder.
+  const dataDir = process.env.VERCEL
+    ? path.join("/tmp", "consol-pglite")
+    : path.join(process.cwd(), ".data", "consol");
   await mkdir(dataDir, { recursive: true });
   const db = new PGlite(dataDir);
   await db.exec(`
