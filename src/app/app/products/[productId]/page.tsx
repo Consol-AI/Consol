@@ -25,45 +25,47 @@ export default async function ProductPage({
   const usedKeys = new Set(processes.map((p) => p.template_key));
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8 p-5 md:p-7">
+    <div className="mx-auto w-full max-w-[960px] space-y-6 px-5 py-6 md:px-8 md:py-8">
       <div>
         <Link
           href="/app"
-          className="text-sm text-[var(--console-muted)] hover:text-[var(--console-accent)]"
+          className="text-[12px] text-[var(--console-faint)] transition hover:text-[var(--console-accent)]"
         >
           ← Workspace
         </Link>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--console-ink)]">
+        <h1 className="mt-2 text-[22px] font-semibold tracking-tight text-[var(--console-ink)]">
           {product.name}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--console-muted)]">
+        <p className="mt-1 max-w-2xl text-[13px] text-[var(--console-muted)]">
           {product.description ||
             "Link the professional lifecycles this product needs."}
         </p>
       </div>
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold tracking-tight text-[var(--console-ink)]">
-          Processes on this floor
-        </h2>
+      <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+        <div className="border-b border-[var(--console-line)] px-4 py-3">
+          <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+            Processes
+          </h2>
+        </div>
         {processes.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--console-line)] bg-[var(--console-surface)] px-6 py-10 text-center">
-            <p className="text-sm text-[var(--console-muted)]">
-              No processes yet. Add a template below to open the first board.
+          <div className="px-4 py-10 text-center">
+            <p className="text-[13px] text-[var(--console-muted)]">
+              No processes yet. Add a template below.
             </p>
           </div>
         ) : (
-          <ul className="grid gap-3 md:grid-cols-2">
+          <ul className="divide-y divide-[var(--console-line)]">
             {processes.map((process) => (
               <li key={process.id}>
                 <Link
                   href={`/app/products/${product.id}/processes/${process.id}`}
-                  className="block rounded-xl border border-[var(--console-line)] bg-[var(--console-surface)] p-5 transition hover:border-[var(--console-accent)]/40"
+                  className="block px-4 py-3.5 transition hover:bg-[var(--console-hover)]"
                 >
-                  <p className="text-xs uppercase tracking-[0.12em] text-[var(--console-muted)]">
+                  <p className="text-[11px] text-[var(--console-faint)]">
                     {process.domain}
                   </p>
-                  <h3 className="mt-1 text-lg font-medium text-[var(--console-ink)]">
+                  <h3 className="mt-0.5 text-[13px] font-medium text-[var(--console-ink)]">
                     {process.name}
                   </h3>
                 </Link>
@@ -73,38 +75,48 @@ export default async function ProductPage({
         )}
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold tracking-tight text-[var(--console-ink)]">
-          Add a lifecycle
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {PROCESS_TEMPLATES.map((template) => (
-            <form
-              key={template.key}
-              action={addProcessAction}
-              className="rounded-xl border border-[var(--console-line)] bg-[var(--console-surface)] p-5"
-            >
-              <input type="hidden" name="productId" value={product.id} />
-              <input type="hidden" name="templateKey" value={template.key} />
-              <h3 className="font-medium tracking-tight text-[var(--console-ink)]">
-                {template.name}
-              </h3>
-              <p className="mt-1 text-sm text-[var(--console-muted)]">
-                {template.description}
-              </p>
-              <p className="mt-3 text-xs text-[var(--console-muted)]">
-                {template.stages.map((s) => s.name).join(" → ")}
-              </p>
-              <Button
-                type="submit"
-                className="mt-4"
-                variant={usedKeys.has(template.key) ? "secondary" : "default"}
-              >
-                {usedKeys.has(template.key) ? "Add another" : "Add process"}
-              </Button>
-            </form>
-          ))}
+      <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+        <div className="border-b border-[var(--console-line)] px-4 py-3">
+          <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+            Add a lifecycle
+          </h2>
         </div>
+        <ul className="divide-y divide-[var(--console-line)]">
+          {PROCESS_TEMPLATES.map((template) => (
+            <li key={template.key} className="px-4 py-4">
+              <form
+                action={addProcessAction}
+                className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+              >
+                <input type="hidden" name="productId" value={product.id} />
+                <input type="hidden" name="templateKey" value={template.key} />
+                <div className="min-w-0">
+                  <h3 className="text-[13px] font-medium text-[var(--console-ink)]">
+                    {template.name}
+                  </h3>
+                  <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
+                    {template.description}
+                  </p>
+                  <p className="mt-2 text-[11px] text-[var(--console-faint)]">
+                    {template.stages.map((s) => s.name).join(" → ")}
+                  </p>
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className={
+                    usedKeys.has(template.key)
+                      ? "h-8 shrink-0 rounded-md text-[12px]"
+                      : "h-8 shrink-0 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
+                  }
+                  variant={usedKeys.has(template.key) ? "outline" : "default"}
+                >
+                  {usedKeys.has(template.key) ? "Add another" : "Add process"}
+                </Button>
+              </form>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

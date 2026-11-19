@@ -60,18 +60,22 @@
   --hero-mid: #1d3a2d;
   --hero-glow: #2f6b4f;
 
-  /* Console / workspace shell — cool, clean, ClickUp-adjacent */
-  --console-bg: #f4f6f5;
-  --console-sidebar: #ffffff;
+  /* Console — cool neutrals + teal accent */
+  --console-bg: #f6f7f8;
+  --console-sidebar: #fbfbfc;
   --console-surface: #ffffff;
-  --console-panel: #eef2f0;
-  --console-line: #e2e8e4;
-  --console-ink: #15241c;
-  --console-muted: #66756c;
-  --console-accent: #1f6b4a;
-  --console-accent-soft: #d8eee3;
-  --console-hover: #f0f4f1;
-  --console-agent: #e4f3ec;
+  --console-panel: #f3f4f6;
+  --console-line: #e8eaed;
+  --console-ink: #111827;
+  --console-muted: #6b7280;
+  --console-faint: #9ca3af;
+  --console-accent: #0f766e;
+  --console-accent-hover: #0d9488;
+  --console-accent-soft: #ecfdf8;
+  --console-accent-ring: rgb(15 118 110 / 0.16);
+  --console-hover: #f3f4f6;
+  --console-agent: #f0fdfa;
+  --console-shadow: 0 1px 2px rgb(17 24 39 / 0.04);
 
   --background: var(--paper);
   --foreground: var(--ink);
@@ -96,7 +100,7 @@
   --chart-3: #5d6a61;
   --chart-4: #2f6b4f;
   --chart-5: #8b7355;
-  --radius: 0.5rem;
+  --radius: 0.625rem;
   --sidebar: var(--panel);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--ink);
@@ -122,20 +126,21 @@
   html {
     @apply font-sans;
   }
-  /* Flat, calm workspace surface — marketing page keeps the warm wash. */
   .console-shell {
     background-image: none;
     background-color: var(--console-bg);
+    color: var(--console-ink);
+    letter-spacing: -0.011em;
   }
   .console-shell .console-sidebar {
-    box-shadow: 1px 0 0 var(--console-line);
+    border-right: 1px solid var(--console-line);
   }
 }
 
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -163,11 +168,11 @@
 }
 
 .animate-rise {
-  animation: rise-in 0.7s ease-out both;
+  animation: rise-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay {
-  animation: rise-in 0.8s ease-out 0.12s both;
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
 }
 
 .animate-drift {

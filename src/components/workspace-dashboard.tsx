@@ -3,15 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
+  ArrowUpRight,
   Bot,
   FolderKanban,
   Plus,
   Sparkles,
   UserRound,
-  Users,
 } from "lucide-react";
 import { createProductAction } from "@/app/actions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,7 +46,7 @@ function statusDot(status: TeammatePlaceHolder["status"]) {
     case "away":
       return "bg-sky-500";
     default:
-      return "bg-zinc-400";
+      return "bg-zinc-300";
   }
 }
 
@@ -112,23 +111,17 @@ export function WorkspaceDashboard({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--console-line)] bg-[var(--console-surface)] px-5 py-4 md:px-7">
-        <div className="animate-rise">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--console-muted)]">
-            {orgName}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--console-ink)] md:text-[1.75rem]">
+      <header className="flex items-center justify-between gap-4 px-5 py-5 md:px-8 md:py-6">
+        <div className="animate-rise min-w-0">
+          <p className="text-[12px] text-[var(--console-faint)]">{orgName}</p>
+          <h1 className="mt-0.5 text-[22px] font-semibold tracking-tight text-[var(--console-ink)]">
             Workspace
           </h1>
-          <p className="mt-1 max-w-xl text-sm text-[var(--console-muted)]">
-            Switch projects, see who&apos;s on the floor — people and AI agents
-            together. Starting point for iteration.
-          </p>
         </div>
         <Button
           type="button"
           size="sm"
-          className="animate-rise-delay gap-1.5 bg-[var(--console-accent)] text-white hover:bg-[var(--console-accent)]/90"
+          className="animate-rise-delay h-8 gap-1.5 rounded-md bg-[var(--console-ink)] px-3 text-[12px] text-white hover:bg-[var(--console-accent)]"
           onClick={() => setShowCreate((v) => !v)}
         >
           <Plus className="size-3.5" aria-hidden />
@@ -136,227 +129,240 @@ export function WorkspaceDashboard({
         </Button>
       </header>
 
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto grid max-w-6xl gap-5 p-5 md:p-7 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.9fr)]">
-          {/* Projects column */}
-          <section id="projects" className="animate-rise space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <FolderKanban
-                  className="size-4 text-[var(--console-accent)]"
-                  aria-hidden
-                />
-                <h2 className="text-sm font-semibold text-[var(--console-ink)]">
-                  Projects
-                </h2>
-                <Badge variant="secondary" className="rounded-md font-normal">
-                  {products.length}
-                </Badge>
-              </div>
-              {selectedTeammate ? (
-                <p className="text-xs text-[var(--console-muted)]">
-                  Showing work for{" "}
-                  <span className="font-medium text-[var(--console-ink)]">
-                    {selectedTeammate.name}
+      <div className="flex-1 overflow-auto px-5 pb-8 md:px-8">
+        <div className="mx-auto grid max-w-[1100px] gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.85fr)] lg:gap-6">
+          <div className="space-y-5">
+            <section
+              id="projects"
+              className="animate-rise overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--console-line)] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+                    Projects
+                  </h2>
+                  <span className="rounded-full bg-[var(--console-panel)] px-1.5 py-0.5 text-[11px] tabular-nums text-[var(--console-muted)]">
+                    {products.length}
                   </span>
-                </p>
-              ) : null}
-            </div>
-
-            {showCreate ? (
-              <form
-                action={createProductAction}
-                className="space-y-3 rounded-xl border border-dashed border-[var(--console-accent)]/35 bg-[var(--console-accent-soft)]/40 p-4"
-              >
-                <p className="text-sm font-medium text-[var(--console-ink)]">
-                  Create a project
-                </p>
-                <Input
-                  name="name"
-                  placeholder="Project or product name"
-                  required
-                  className="bg-[var(--console-surface)]"
-                />
-                <Textarea
-                  name="description"
-                  placeholder="What are you building together?"
-                  className="min-h-16 resize-none bg-[var(--console-surface)]"
-                />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="bg-[var(--console-accent)] text-white hover:bg-[var(--console-accent)]/90"
-                  >
-                    Create project
-                  </Button>
-                  {products.length > 0 ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowCreate(false)}
-                    >
-                      Cancel
-                    </Button>
-                  ) : null}
                 </div>
-              </form>
-            ) : null}
-
-            {products.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[var(--console-line)] bg-[var(--console-surface)] px-6 py-12 text-center">
-                <FolderKanban
-                  className="mx-auto size-8 text-[var(--console-muted)]"
-                  aria-hidden
-                />
-                <p className="mt-3 font-medium text-[var(--console-ink)]">
-                  No projects yet
-                </p>
-                <p className="mt-1 text-sm text-[var(--console-muted)]">
-                  Create your first project to assign teammates and open
-                  processes.
-                </p>
-              </div>
-            ) : (
-              <ul className="grid gap-2.5 sm:grid-cols-2">
-                {(selectedTeammate ? productsForTeammate : products).map(
-                  (product, index) => {
-                    const active = product.id === selectedProductId;
-                    const dimmed =
-                      Boolean(selectedTeammate) &&
-                      selectedTeammate!.productIds.length > 0 &&
-                      !selectedTeammate!.productIds.includes(product.id);
-                    const linkedCount = teammates.filter((t) =>
-                      t.productIds.includes(product.id),
-                    ).length;
-
-                    return (
-                      <li
-                        key={product.id}
-                        style={{ animationDelay: `${index * 40}ms` }}
-                        className="animate-rise"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => selectProduct(product.id)}
-                          className={cn(
-                            "group w-full rounded-xl border bg-[var(--console-surface)] p-4 text-left transition-all duration-200",
-                            active
-                              ? "border-[var(--console-accent)] shadow-[0_0_0_3px_var(--console-accent-soft)]"
-                              : "border-[var(--console-line)] hover:border-[var(--console-accent)]/40 hover:shadow-sm",
-                            dimmed && "opacity-40",
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="font-medium tracking-tight text-[var(--console-ink)]">
-                              {product.name}
-                            </h3>
-                            {active ? (
-                              <span className="rounded-md bg-[var(--console-accent-soft)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--console-accent)]">
-                                Selected
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--console-muted)]">
-                            {product.description || "No description yet."}
-                          </p>
-                          <div className="mt-3 flex items-center justify-between gap-2">
-                            <span className="text-[11px] text-[var(--console-muted)]">
-                              {linkedCount} teammate
-                              {linkedCount === 1 ? "" : "s"}
-                            </span>
-                            <Link
-                              href={`/app/products/${product.id}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-[11px] font-medium text-[var(--console-accent)] opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
-                            >
-                              Open →
-                            </Link>
-                          </div>
-                        </button>
-                      </li>
-                    );
-                  },
+                {selectedTeammate ? (
+                  <p className="truncate text-[12px] text-[var(--console-muted)]">
+                    For{" "}
+                    <span className="text-[var(--console-ink)]">
+                      {selectedTeammate.name}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-[12px] text-[var(--console-faint)]">
+                    Select to assign teammates
+                  </p>
                 )}
-              </ul>
-            )}
+              </div>
 
-            {/* Bridge: selected project ↔ teammates */}
+              {showCreate ? (
+                <form
+                  action={createProductAction}
+                  className="space-y-3 border-b border-[var(--console-line)] bg-[var(--console-panel)]/60 px-4 py-4"
+                >
+                  <Input
+                    name="name"
+                    placeholder="Project name"
+                    required
+                    className="h-9 rounded-md border-[var(--console-line)] bg-white text-[13px]"
+                  />
+                  <Textarea
+                    name="description"
+                    placeholder="Short description"
+                    className="min-h-14 resize-none rounded-md border-[var(--console-line)] bg-white text-[13px]"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="h-8 rounded-md bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+                    >
+                      Create
+                    </Button>
+                    {products.length > 0 ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-[12px]"
+                        onClick={() => setShowCreate(false)}
+                      >
+                        Cancel
+                      </Button>
+                    ) : null}
+                  </div>
+                </form>
+              ) : null}
+
+              {products.length === 0 ? (
+                <div className="px-4 py-14 text-center">
+                  <FolderKanban
+                    className="mx-auto size-7 text-[var(--console-faint)]"
+                    aria-hidden
+                  />
+                  <p className="mt-3 text-[13px] font-medium text-[var(--console-ink)]">
+                    No projects yet
+                  </p>
+                  <p className="mt-1 text-[12px] text-[var(--console-muted)]">
+                    Create one to start linking teammates.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-[var(--console-line)]">
+                  {(selectedTeammate ? productsForTeammate : products).map(
+                    (product) => {
+                      const active = product.id === selectedProductId;
+                      const dimmed =
+                        Boolean(selectedTeammate) &&
+                        selectedTeammate!.productIds.length > 0 &&
+                        !selectedTeammate!.productIds.includes(product.id);
+                      const linkedCount = teammates.filter((t) =>
+                        t.productIds.includes(product.id),
+                      ).length;
+
+                      return (
+                        <li key={product.id}>
+                          <button
+                            type="button"
+                            onClick={() => selectProduct(product.id)}
+                            className={cn(
+                              "group flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors",
+                              active
+                                ? "bg-[var(--console-accent-soft)]"
+                                : "hover:bg-[var(--console-hover)]",
+                              dimmed && "opacity-40",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "mt-1.5 size-1.5 shrink-0 rounded-full",
+                                active
+                                  ? "bg-[var(--console-accent)]"
+                                  : "bg-[var(--console-line)]",
+                              )}
+                              aria-hidden
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-2">
+                                <span className="truncate text-[13px] font-medium text-[var(--console-ink)]">
+                                  {product.name}
+                                </span>
+                                {active ? (
+                                  <span className="text-[11px] font-medium text-[var(--console-accent)]">
+                                    Active
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span className="mt-0.5 line-clamp-1 block text-[12px] text-[var(--console-muted)]">
+                                {product.description || "No description yet."}
+                              </span>
+                              <span className="mt-2 flex items-center gap-3 text-[11px] text-[var(--console-faint)]">
+                                <span>
+                                  {linkedCount} teammate
+                                  {linkedCount === 1 ? "" : "s"}
+                                </span>
+                                <Link
+                                  href={`/app/products/${product.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-0.5 font-medium text-[var(--console-accent)] opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+                                >
+                                  Open
+                                  <ArrowUpRight
+                                    className="size-3"
+                                    aria-hidden
+                                  />
+                                </Link>
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    },
+                  )}
+                </ul>
+              )}
+            </section>
+
             {selectedProduct ? (
-              <div className="animate-rise-delay rounded-xl border border-[var(--console-line)] bg-[var(--console-panel)] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--console-muted)]">
-                      Project ↔ teammates
+              <section className="animate-rise-delay rounded-xl bg-[var(--console-surface)] px-4 py-4 shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-[var(--console-faint)]">
+                      Linked teammates
                     </p>
-                    <p className="mt-1 text-sm font-medium text-[var(--console-ink)]">
+                    <p className="truncate text-[13px] font-medium text-[var(--console-ink)]">
                       {selectedProduct.name}
                     </p>
                   </div>
                   <Link href={`/app/products/${selectedProduct.id}`}>
-                    <Button size="sm" variant="outline">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 rounded-md border-[var(--console-line)] bg-white text-[12px] shadow-none hover:bg-[var(--console-hover)]"
+                    >
                       Open floor
                     </Button>
                   </Link>
                 </div>
-                <ul className="mt-3 flex flex-wrap gap-2">
+                <ul className="mt-3 flex flex-wrap gap-1.5">
                   {teammatesForProduct.map((t) => (
                     <li key={t.id}>
                       <button
                         type="button"
                         onClick={() => selectTeammate(t.id)}
                         className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition",
+                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition",
                           selectedTeammateId === t.id
-                            ? "border-[var(--console-accent)] bg-[var(--console-accent-soft)] text-[var(--console-accent)]"
-                            : "border-[var(--console-line)] bg-[var(--console-surface)] text-[var(--console-ink)] hover:border-[var(--console-accent)]/40",
+                            ? "bg-[var(--console-ink)] text-white"
+                            : "bg-[var(--console-panel)] text-[var(--console-ink)] hover:bg-[var(--console-line)]",
                         )}
                       >
                         {t.kind === "agent" ? (
-                          <Sparkles className="size-3" aria-hidden />
+                          <Sparkles className="size-3 opacity-70" aria-hidden />
                         ) : (
-                          <UserRound className="size-3" aria-hidden />
+                          <UserRound
+                            className="size-3 opacity-70"
+                            aria-hidden
+                          />
                         )}
                         {t.name}
                       </button>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 text-xs text-[var(--console-muted)]">
-                  Click a chip to filter projects by that teammate. Placeholder
-                  links — swap for real assignments later.
+                <p className="mt-3 text-[11px] leading-relaxed text-[var(--console-faint)]">
+                  Placeholder links — click a person to filter projects.
                 </p>
-              </div>
+              </section>
             ) : null}
-          </section>
+          </div>
 
-          {/* Teammates column */}
-          <section id="teammates" className="animate-rise-delay space-y-4">
-            <div className="flex items-center gap-2">
-              <UsersIcon />
-              <h2 className="text-sm font-semibold text-[var(--console-ink)]">
-                Teammates
-              </h2>
-              <Badge variant="secondary" className="rounded-md font-normal">
-                {teammates.length}
-              </Badge>
+          <section
+            id="teammates"
+            className="animate-rise-delay overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]"
+          >
+            <div className="border-b border-[var(--console-line)] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+                  Teammates
+                </h2>
+                <span className="rounded-full bg-[var(--console-panel)] px-1.5 py-0.5 text-[11px] tabular-nums text-[var(--console-muted)]">
+                  {teammates.length}
+                </span>
+              </div>
+              <p className="mt-1 text-[12px] text-[var(--console-faint)]">
+                {selectedProduct
+                  ? `Showing links for ${selectedProduct.name}`
+                  : "People and AI agents"}
+              </p>
             </div>
-            <p className="text-xs text-[var(--console-muted)]">
-              Humans and AI agents on this workspace
-              {selectedProduct ? (
-                <>
-                  {" "}
-                  · filtered for{" "}
-                  <span className="font-medium text-[var(--console-ink)]">
-                    {selectedProduct.name}
-                  </span>
-                </>
-              ) : null}
-            </p>
 
-            <ul className="space-y-2">
-              {teammates.map((teammate, index) => {
+            <ul className="divide-y divide-[var(--console-line)]">
+              {teammates.map((teammate) => {
                 const onProject =
                   !selectedProductId ||
                   teammate.productIds.includes(selectedProductId) ||
@@ -364,38 +370,34 @@ export function WorkspaceDashboard({
                 const active = teammate.id === selectedTeammateId;
 
                 return (
-                  <li
-                    key={teammate.id}
-                    style={{ animationDelay: `${80 + index * 45}ms` }}
-                    className="animate-rise"
-                  >
+                  <li key={teammate.id}>
                     <button
                       type="button"
                       onClick={() => selectTeammate(teammate.id)}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-xl border bg-[var(--console-surface)] px-3 py-3 text-left transition-all duration-200",
+                        "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
                         active
-                          ? "border-[var(--console-accent)] shadow-[0_0_0_3px_var(--console-accent-soft)]"
-                          : "border-[var(--console-line)] hover:border-[var(--console-accent)]/35",
+                          ? "bg-[var(--console-accent-soft)]"
+                          : "hover:bg-[var(--console-hover)]",
                         !onProject && "opacity-35",
                       )}
                     >
                       <div
                         className={cn(
-                          "relative flex size-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                          "relative flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
                           teammate.kind === "agent"
                             ? "bg-[var(--console-agent)] text-[var(--console-accent)]"
-                            : "bg-[var(--console-accent-soft)] text-[var(--console-accent)]",
+                            : "bg-[var(--console-panel)] text-[var(--console-ink)]",
                         )}
                       >
                         {teammate.kind === "agent" ? (
-                          <Bot className="size-4" aria-hidden />
+                          <Bot className="size-3.5" aria-hidden />
                         ) : (
                           initials(teammate.name)
                         )}
                         <span
                           className={cn(
-                            "absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-[var(--console-surface)]",
+                            "absolute bottom-0 right-0 size-2 rounded-full ring-2 ring-white",
                             statusDot(teammate.status),
                           )}
                           aria-hidden
@@ -403,18 +405,26 @@ export function WorkspaceDashboard({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-medium text-[var(--console-ink)]">
+                          <p className="truncate text-[13px] font-medium text-[var(--console-ink)]">
                             {teammate.name}
                           </p>
-                          <Badge
-                            variant="outline"
-                            className="rounded-md px-1.5 py-0 text-[10px] font-normal capitalize"
+                          <span
+                            className={cn(
+                              "rounded px-1 py-px text-[10px] font-medium capitalize",
+                              teammate.kind === "agent"
+                                ? "bg-[var(--console-agent)] text-[var(--console-accent)]"
+                                : "bg-[var(--console-panel)] text-[var(--console-muted)]",
+                            )}
                           >
                             {teammate.kind}
-                          </Badge>
+                          </span>
                         </div>
-                        <p className="mt-0.5 truncate text-xs text-[var(--console-muted)]">
-                          {teammate.role} · {STATUS_LABEL[teammate.status]}
+                        <p className="mt-0.5 truncate text-[12px] text-[var(--console-muted)]">
+                          {teammate.role}
+                          <span className="text-[var(--console-faint)]">
+                            {" "}
+                            · {STATUS_LABEL[teammate.status]}
+                          </span>
                         </p>
                       </div>
                     </button>
@@ -426,11 +436,5 @@ export function WorkspaceDashboard({
         </div>
       </div>
     </div>
-  );
-}
-
-function UsersIcon() {
-  return (
-    <Users className="size-4 text-[var(--console-accent)]" aria-hidden />
   );
 }
