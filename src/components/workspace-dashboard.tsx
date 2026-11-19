@@ -230,22 +230,13 @@ export function WorkspaceDashboard({
                             type="button"
                             onClick={() => selectProduct(product.id)}
                             className={cn(
-                              "group flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors",
+                              "group flex w-full items-start gap-3 border-l-2 px-4 py-3.5 text-left transition-colors",
                               active
-                                ? "bg-[var(--console-accent-soft)]"
-                                : "hover:bg-[var(--console-hover)]",
+                                ? "border-l-[var(--console-accent)] bg-[var(--console-accent-soft)]"
+                                : "border-l-transparent hover:bg-[var(--console-hover)]",
                               dimmed && "opacity-40",
                             )}
                           >
-                            <span
-                              className={cn(
-                                "mt-1.5 size-1.5 shrink-0 rounded-full",
-                                active
-                                  ? "bg-[var(--console-accent)]"
-                                  : "bg-[var(--console-line)]",
-                              )}
-                              aria-hidden
-                            />
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-2">
                                 <span className="truncate text-[13px] font-medium text-[var(--console-ink)]">
@@ -375,10 +366,10 @@ export function WorkspaceDashboard({
                       type="button"
                       onClick={() => selectTeammate(teammate.id)}
                       className={cn(
-                        "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+                        "flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left transition-colors",
                         active
-                          ? "bg-[var(--console-accent-soft)]"
-                          : "hover:bg-[var(--console-hover)]",
+                          ? "border-l-[var(--console-accent)] bg-[var(--console-accent-soft)]"
+                          : "border-l-transparent hover:bg-[var(--console-hover)]",
                         !onProject && "opacity-35",
                       )}
                     >
