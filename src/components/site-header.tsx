@@ -22,35 +22,29 @@ export function SiteHeader({
       >
         Consol
       </Link>
-      <nav className="flex items-center gap-4 text-sm">
+      <nav className="flex items-center gap-5 text-sm">
         {!compact && (
-          <a
-            href="#how"
-            className="hidden text-[var(--landing-quiet)] transition hover:text-[var(--landing-ink)] sm:inline"
-          >
-            How it fits
-          </a>
-        )}
-        {viewer ? (
           <>
-            <span className="hidden text-[var(--landing-quiet)] sm:inline">
-              {viewer.demo ? `${viewer.name} (demo)` : viewer.name}
-            </span>
-            <Link
-              href="/app"
-              className="rounded-md bg-[var(--landing-ink)] px-3.5 py-1.5 text-white transition hover:bg-[var(--landing-ink)]/90"
+            <a
+              href="#how"
+              className="hidden text-[var(--landing-quiet)] transition hover:text-[var(--landing-ink)] md:inline"
             >
-              Workspace
-            </Link>
+              How it works
+            </a>
+            <a
+              href="#faq"
+              className="hidden text-[var(--landing-quiet)] transition hover:text-[var(--landing-ink)] lg:inline"
+            >
+              FAQ
+            </a>
           </>
-        ) : (
-          <Link
-            href="/app"
-            className="rounded-md bg-[var(--landing-ink)] px-3.5 py-1.5 text-white transition hover:bg-[var(--landing-ink)]/90"
-          >
-            Open factory
-          </Link>
         )}
+        <Link
+          href="/app"
+          className="rounded-md bg-[var(--landing-accent)] px-3.5 py-1.5 font-medium text-white transition hover:bg-[var(--landing-accent-hover)]"
+        >
+          {viewer ? "Workspace" : "Get started"}
+        </Link>
       </nav>
     </header>
   );

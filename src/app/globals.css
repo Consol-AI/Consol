@@ -60,13 +60,14 @@
   --hero-mid: #1d3a2d;
   --hero-glow: #2f6b4f;
 
-  /* Landing — quiet forest daylight (product teal, no neon) */
+  /* Landing — conversion daylight (product teal CTAs, no neon) */
   --landing-bg: #f4f6f5;
   --landing-soft: #eef6f2;
   --landing-ink: #14241c;
   --landing-quiet: #4d5c55;
   --landing-line: #d5ddd8;
   --landing-accent: #0f766e;
+  --landing-accent-hover: #0d9488;
 
   /* Console — cool neutrals + teal accent */
   --console-bg: #f6f7f8;

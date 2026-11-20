@@ -1,9 +1,9 @@
-/** Full-bleed product plane — mirrors the real Consol console. */
+/** Full-bleed product proof for the hero — mirrors the real Consol console. */
 export function LandingWorkspace() {
   return (
     <div
       aria-hidden
-      className="landing-workspace flex h-full min-h-[400px] w-full overflow-hidden border-t border-[var(--console-line)] bg-[var(--console-bg)] md:min-h-[520px]"
+      className="landing-workspace flex h-full min-h-[420px] w-full overflow-hidden border-t border-[var(--console-line)] bg-[var(--console-bg)] md:min-h-[540px]"
     >
       <aside className="hidden w-[200px] shrink-0 flex-col border-r border-[var(--console-line)] bg-[var(--console-sidebar)] p-4 md:flex">
         <div className="flex items-center gap-2.5">
@@ -39,19 +39,29 @@ export function LandingWorkspace() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--console-line)] px-4 py-3 md:px-5 md:py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--console-line)] px-4 py-3 md:px-6 md:py-4">
           <div>
             <p className="text-[12px] text-[var(--console-faint)]">Northwind</p>
             <div className="mt-1 flex items-center gap-2.5">
-              <span className="flex size-6 items-center justify-center rounded-md bg-[var(--console-agent)] text-[10px] font-semibold text-[var(--console-accent)]">
-                AI
+              <span className="flex size-7 items-center justify-center rounded-md bg-[var(--console-agent)] text-[var(--console-accent)]">
+                <svg
+                  viewBox="0 0 16 16"
+                  className="size-3.5"
+                  fill="none"
+                  aria-hidden
+                >
+                  <path
+                    d="M8 2.5 9.2 6h3.5L9.9 8.3l1.1 3.5L8 9.7l-3 1.1 1.1-3.5L3.3 6H6.8L8 2.5Z"
+                    fill="currentColor"
+                  />
+                </svg>
               </span>
               <div>
                 <p className="text-[17px] font-semibold tracking-tight text-[var(--console-ink)]">
                   Forge
                 </p>
                 <p className="text-[12px] text-[var(--console-muted)]">
-                  Coordinate tasks and decisions across the factory
+                  Coordinate decisions across the factory
                 </p>
               </div>
             </div>
@@ -62,26 +72,26 @@ export function LandingWorkspace() {
         </div>
 
         <div className="flex min-h-0 flex-1">
-          <div className="flex min-w-0 flex-1 flex-col px-4 py-4 md:px-5 md:py-5">
-            <div className="landing-chat-rise mx-auto flex w-full max-w-[720px] flex-col gap-3">
-              <div className="ml-6 rounded-xl bg-[var(--console-ink)] px-3.5 py-2.5 text-[13px] leading-relaxed text-white">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="landing-chat-rise mx-auto flex w-full max-w-[680px] flex-1 flex-col gap-3 px-4 py-5 md:px-6">
+              <div className="ml-8 rounded-xl bg-[var(--console-ink)] px-3.5 py-2.5 text-[13px] leading-relaxed text-white">
                 <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] opacity-60">
                   You
                 </p>
                 What needs a decision before we ship checkout?
               </div>
-              <div className="landing-reply mr-6 rounded-xl bg-[var(--console-surface)] px-3.5 py-2.5 text-[13px] leading-relaxed text-[var(--console-ink)] ring-1 ring-[var(--console-line)]">
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--console-muted)]">
+              <div className="landing-reply mr-8 rounded-xl bg-[var(--console-surface)] px-3.5 py-2.5 text-[13px] leading-relaxed text-[var(--console-ink)] ring-1 ring-[var(--console-line)]">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--console-accent)]">
                   Forge
                 </p>
-                Three blockers: pricing experiment gate, design sign-off on empty
-                states, and the data check on funnel drop-off. I queued owners
-                and can draft the eng brief next.
+                Three blockers: pricing gate, design sign-off on empty states,
+                and funnel drop-off data. I queued owners — want me to draft the
+                eng brief?
               </div>
             </div>
 
-            <div className="mt-auto border-t border-[var(--console-line)] bg-[var(--console-surface)] px-0 pt-3">
-              <div className="flex items-center gap-2 rounded-md border border-[var(--console-line)] bg-white px-3 py-2.5">
+            <div className="border-t border-[var(--console-line)] bg-[var(--console-surface)] px-4 py-3 md:px-6">
+              <div className="mx-auto flex max-w-[680px] items-center gap-2 rounded-md border border-[var(--console-line)] bg-white px-3 py-2.5">
                 <span className="flex-1 truncate text-[13px] text-[var(--console-faint)]">
                   Ask Forge to coordinate a task or decision…
                 </span>
@@ -90,14 +100,14 @@ export function LandingWorkspace() {
             </div>
           </div>
 
-          <aside className="hidden w-[230px] shrink-0 border-l border-[var(--console-line)] bg-[var(--console-surface)] p-4 lg:block">
+          <aside className="hidden w-[240px] shrink-0 border-l border-[var(--console-line)] bg-[var(--console-surface)] p-4 xl:block">
             <p className="text-[13px] font-semibold text-[var(--console-ink)]">
               Needs attention
             </p>
-            <p className="mt-1 text-[11px] text-[var(--console-faint)]">
-              Decisions and agent work across projects
+            <p className="mt-1 text-[11px] leading-snug text-[var(--console-faint)]">
+              Decisions waiting across linked lifecycles
             </p>
-            <ul className="mt-4 space-y-0">
+            <ul className="mt-4">
               {[
                 { title: "Approve pricing gate", meta: "Product · Human" },
                 { title: "Empty-state critique", meta: "Design · Agent" },

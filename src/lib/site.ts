@@ -4,7 +4,7 @@ export const siteConfig = {
   name: "Consol",
   tagline: "Product factory for cross-functional teams",
   description:
-    "Consol is the product factory where product, engineering, design, and data lifecycles share one board — with AI teammates in the loop.",
+    "Consol brings product, engineering, design, and data onto one shared floor — with AI teammates that help you decide, brief, and ship.",
   keywords: [
     "product management software",
     "AI product workspace",
