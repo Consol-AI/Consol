@@ -16,45 +16,45 @@ export default function Image() {
           justifyContent: "space-between",
           padding: "64px 72px",
           background:
-            "radial-gradient(ellipse at 20% 20%, #1a7a5c55, transparent 45%), radial-gradient(ellipse at 85% 10%, #2a9b7440, transparent 40%), linear-gradient(155deg, #071410 0%, #12352c 55%, #0a1f18 100%)",
-          color: "#e8eef0",
+            "radial-gradient(ellipse at 12% 0%, rgba(15,118,110,0.10), transparent 50%), linear-gradient(180deg, #f7f8fa 0%, #f4f5f7 55%, #eef1f4 100%)",
+          color: "#111827",
           fontFamily: "ui-sans-serif, system-ui, sans-serif",
         }}
       >
         <div
           style={{
             display: "flex",
-            fontSize: 72,
+            fontSize: 76,
             fontWeight: 700,
-            letterSpacing: "-0.04em",
+            letterSpacing: "-0.045em",
             lineHeight: 1,
           }}
         >
           Consol
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div
             style={{
               display: "flex",
-              fontSize: 40,
+              fontSize: 38,
               fontWeight: 600,
               letterSpacing: "-0.03em",
               lineHeight: 1.15,
-              maxWidth: 900,
+              maxWidth: 860,
             }}
           >
-            The product factory where every lifecycle shares one floor.
+            Every team&apos;s lifecycle on one floor — with AI in the loop.
           </div>
           <div
             style={{
               display: "flex",
-              fontSize: 24,
-              color: "#9cb8ae",
-              maxWidth: 780,
+              fontSize: 22,
+              color: "#6b7280",
+              maxWidth: 720,
               lineHeight: 1.35,
             }}
           >
-            Product, engineering, design, and data — with AI in the loop.
+            Product, engineering, design, and data — sharing one board.
           </div>
         </div>
       </div>
