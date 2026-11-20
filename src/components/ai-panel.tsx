@@ -36,6 +36,7 @@ export function AiPanel({
     setDraft("");
     const optimistic: Message = {
       id: `tmp_${Date.now()}`,
+      organization_id: null,
       process_id: processId,
       work_item_id: workItemId ?? null,
       role: "user",
@@ -64,6 +65,7 @@ export function AiPanel({
             ...prev,
             {
               id: `tmp_ai_${Date.now()}`,
+              organization_id: null,
               process_id: processId,
               work_item_id: workItemId ?? null,
               role: "assistant",
@@ -85,6 +87,7 @@ export function AiPanel({
           ...prev,
           {
             id: streamId,
+            organization_id: null,
             process_id: processId,
             work_item_id: workItemId ?? null,
             role: "assistant",

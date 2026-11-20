@@ -1,9 +1,15 @@
 import { streamText } from "ai";
 import { getIdentity } from "../../../../cursor/identity";
-import { getLanguageModel, mockAssistantReply } from "@/lib/ai";
+import {
+  formatWorkspaceBriefForPrompt,
+  getLanguageModel,
+  mockAssistantReply,
+} from "@/lib/ai";
 import {
   addMessage,
+  assertOrgAccess,
   assertProductAccess,
+  buildWorkspaceBrief,
   getProcess,
   getWorkItem,
   listStages,
@@ -15,6 +21,7 @@ type ChatBody = {
   message?: string;
   processId?: string;
   workItemId?: string;
+  organizationId?: string;
 };
 
 export async function POST(request: Request) {
@@ -41,8 +48,10 @@ export async function POST(request: Request) {
 
   let processId = body.processId ?? null;
   let workItemId = body.workItemId ?? null;
+  let organizationId = body.organizationId ?? null;
   let contextLabel = "this workspace";
   let stageNames: string[] = [];
+  let workspaceBriefText: string | undefined;
 
   if (workItemId) {
     const item = await getWorkItem(workItemId);
@@ -54,6 +63,7 @@ export async function POST(request: Request) {
     const product = await assertProductAccess(process.product_id, viewer.sub);
     if (!product) return Response.json({ error: "forbidden" }, { status: 403 });
     processId = process.id;
+    organizationId = product.organization_id;
     contextLabel = `${item.title} (${process.name})`;
     stageNames = (await listStages(process.id)).map((s) => s.name);
   } else if (processId) {
@@ -63,13 +73,21 @@ export async function POST(request: Request) {
     }
     const product = await assertProductAccess(process.product_id, viewer.sub);
     if (!product) return Response.json({ error: "forbidden" }, { status: 403 });
+    organizationId = product.organization_id;
     contextLabel = process.name;
     stageNames = (await listStages(process.id)).map((s) => s.name);
+  } else if (organizationId) {
+    const ok = await assertOrgAccess(organizationId, viewer.sub);
+    if (!ok) return Response.json({ error: "forbidden" }, { status: 403 });
+    const brief = await buildWorkspaceBrief(organizationId);
+    workspaceBriefText = formatWorkspaceBriefForPrompt(brief);
+    contextLabel = "your factory floor";
   } else {
     return Response.json({ error: "context required" }, { status: 400 });
   }
 
   await addMessage({
+    organizationId,
     processId,
     workItemId,
     role: "user",
@@ -84,8 +102,10 @@ export async function POST(request: Request) {
       userMessage: message,
       contextLabel,
       stageNames,
+      workspaceBrief: workspaceBriefText,
     });
     await addMessage({
+      organizationId,
       processId,
       workItemId,
       role: "assistant",
@@ -95,20 +115,33 @@ export async function POST(request: Request) {
     return Response.json({ reply, mock: true });
   }
 
+  const system = workspaceBriefText
+    ? [
+        "You are Forge, the AI coordinator on the Consol product-factory home screen.",
+        "Help the user coordinate tasks and decisions across projects, processes, and teammates.",
+        "Be concrete and concise. Surface what needs a human decision first, then agent work, then waiting items.",
+        "When useful, point to a project or work item by name and suggest the next decision or handoff.",
+        "Do not invent work that is not in the workspace brief unless the user asks to draft something new.",
+        "",
+        `Workspace brief:\n${workspaceBriefText}`,
+      ].join("\n")
+    : [
+        "You are Forge, an AI collaborator inside a product factory workspace.",
+        "Help cross-functional teams move work through professional lifecycles.",
+        `Current context: ${contextLabel}.`,
+        stageNames.length ? `Lifecycle stages: ${stageNames.join(" → ")}.` : "",
+        "Be concrete, concise, and actionable. Prefer short structured answers.",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
   const result = streamText({
     model,
-    system: [
-      "You are Forge, an AI collaborator inside a product factory workspace.",
-      "Help cross-functional teams move work through professional lifecycles.",
-      `Current context: ${contextLabel}.`,
-      stageNames.length ? `Lifecycle stages: ${stageNames.join(" → ")}.` : "",
-      "Be concrete, concise, and actionable. Prefer short structured answers.",
-    ]
-      .filter(Boolean)
-      .join(" "),
+    system,
     prompt: message,
     onFinish: async ({ text }) => {
       await addMessage({
+        organizationId,
         processId,
         workItemId,
         role: "assistant",

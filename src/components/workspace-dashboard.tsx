@@ -119,7 +119,7 @@ export function WorkspaceDashboard({
         <div className="animate-rise min-w-0">
           <p className="text-[12px] text-[var(--console-faint)]">{orgName}</p>
           <h1 className="mt-0.5 text-[22px] font-semibold tracking-tight text-[var(--console-ink)]">
-            Workspace
+            Projects
           </h1>
         </div>
         <Button

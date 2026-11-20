@@ -12,7 +12,7 @@ const NAV: {
   exact?: boolean;
 }[] = [
   { href: "/app", label: "Home", icon: Home, exact: true },
-  { href: "/app#projects", label: "Projects", icon: FolderKanban },
+  { href: "/app/projects", label: "Projects", icon: FolderKanban },
   { href: "/app/teammates", label: "Teammates", icon: Users },
 ];
 

@@ -1,8 +1,10 @@
-import { WorkspaceDashboard } from "@/components/workspace-dashboard";
-import { buildPlaceholderTeammates } from "@/components/build-placeholder-teammates";
+import { HomeChat } from "@/components/home-chat";
 import { getViewer } from "@/lib/auth";
-import { ensureWorkspace, listMembers, listProducts } from "@/lib/factory";
-import { listTeammates } from "@/lib/teammates/registry";
+import {
+  buildWorkspaceBrief,
+  ensureWorkspace,
+  listMessages,
+} from "@/lib/factory";
 
 export default async function AppHomePage() {
   const viewer = await getViewer();
@@ -25,18 +27,20 @@ export default async function AppHomePage() {
   }
 
   const org = await ensureWorkspace(viewer);
-  const [products, members, agents] = await Promise.all([
-    listProducts(org.id),
-    listMembers(org.id),
-    listTeammates(),
+  const [brief, messages] = await Promise.all([
+    buildWorkspaceBrief(org.id),
+    listMessages({ organizationId: org.id }),
   ]);
-  const teammates = buildPlaceholderTeammates({ members, products, agents });
 
   return (
-    <WorkspaceDashboard
+    <HomeChat
+      organizationId={org.id}
       orgName={org.name}
-      products={products}
-      teammates={teammates}
+      initialMessages={messages}
+      attention={brief.attention}
+      needsYou={brief.needsYou}
+      agentsWorking={brief.agentsWorking}
+      productCount={brief.productCount}
     />
   );
 }
