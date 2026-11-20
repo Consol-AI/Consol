@@ -22,10 +22,23 @@ Open [http://127.0.0.1:43123](http://127.0.0.1:43123).
 
 Without secrets, Consol uses:
 
-- an in-memory **PGlite** database (schema from `migrations/`)
+- a local **PGlite** database under `.data/` (schema from `migrations/`)
 - a **simulated Cursor identity** (`cursor/identity.dev.ts`) when `CONSOL_DEMO_AUTH=1`
 - **mock AI replies** when no model key is set
 - a **file registry** for agent teammates at `data/teammates.json`
+
+### Railway Postgres (testing)
+
+A cheap Hobby Postgres lives in the Railway project **consol** (sleep enabled, 0.5 vCPU / 0.5 GB). Use it instead of PGlite when you want a shared durable DB:
+
+```bash
+# requires: railway CLI logged in + linked (or uses the consol project IDs in the script)
+npm run db:railway-env
+npm run db:migrate
+CONSOL_DEMO_AUTH=1 npm run dev
+```
+
+That writes `.env.local` with the public TCP proxy URL (`*.rlwy.net`). Leave `DATABASE_URL` unset to fall back to PGlite.
 
 ## Teammates (agent specialists)
 
@@ -56,12 +69,13 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 | Variable | Purpose |
 | --- | --- |
 | `CONSOL_DEMO_AUTH` | Enable local demo viewer (`1`) |
-| `DATABASE_URL` | Postgres connection (set automatically when published with Cursor Apps database) |
+| `DATABASE_URL` | Postgres connection (Railway for testing, or Cursor Apps when published) |
 | `DATABASE_URL_UNPOOLED` | Direct Postgres URL for migrations |
+| `DATABASE_SSL` | Set `0` to accept Railway’s self-signed public proxy cert |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway key for live model replies |
 | `OPENAI_API_KEY` | Alternate live model key if Gateway is unset |
 
-Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `cursor-app.json` declares a Postgres database.
+Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `cursor-app.json` declares a Postgres database. For Railway testing, prefer `npm run db:railway-env`.
 
 ## Stack
 

@@ -9,13 +9,46 @@ const globalForDb = globalThis as typeof globalThis & {
   __consolPglite?: Promise<PGlite>;
 };
 
+/**
+ * Railway public TCP proxies use a self-signed cert. When we relax SSL,
+ * also strip sslmode from the URL — newer `pg` treats sslmode=require as
+ * verify-full and ignores an explicit `ssl` option.
+ */
+function pgConnection(connectionString: string): {
+  connectionString: string;
+  ssl?: { rejectUnauthorized: false };
+} {
+  let relax = process.env.DATABASE_SSL === "0";
+  try {
+    const host = new URL(connectionString).hostname;
+    if (host.endsWith(".rlwy.net") || host.endsWith(".railway.app")) {
+      relax = true;
+    }
+  } catch {
+    // ignore malformed URLs; pg will surface the real error
+  }
+  if (!relax) return { connectionString };
+
+  try {
+    const url = new URL(connectionString);
+    url.searchParams.delete("sslmode");
+    url.searchParams.delete("uselibpqcompat");
+    return {
+      connectionString: url.toString(),
+      ssl: { rejectUnauthorized: false },
+    };
+  } catch {
+    return { connectionString, ssl: { rejectUnauthorized: false } };
+  }
+}
+
 export async function sql<T = Record<string, unknown>>(
   text: string,
   params: unknown[] = [],
 ): Promise<T[]> {
   if (databaseUrl !== "") {
     globalForDb.__consolPgPool ??= new pg.Pool({
-      connectionString: databaseUrl,
+      ...pgConnection(databaseUrl),
       max: 5,
     });
     return (await globalForDb.__consolPgPool.query(text, params)).rows as T[];
