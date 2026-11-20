@@ -1,31 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  Bot,
-  Check,
-  CheckCircle2,
-  GitBranch,
-  Loader2,
-  Plus,
-  ScrollText,
-  ShieldCheck,
-  Terminal,
-  X,
-} from "lucide-react";
-import {
-  advanceWorkItemAction,
-  createWorkItemAction,
-  moveWorkItemAction,
-} from "@/app/actions";
+import { CheckCircle2, GitBranch } from "lucide-react";
+import { CreateIssueForm } from "@/components/create-issue-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { parseStageConfig } from "@/lib/flows/stage-config";
-import type { Stage, StageTransition, WorkItem } from "@/lib/factory";
+import { stageMeta } from "@/lib/issues/stage-meta";
+import type { Stage, WorkItem } from "@/lib/factory";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -33,214 +14,19 @@ type Props = {
   processId: string;
   stages: Stage[];
   items: WorkItem[];
-  transitions: StageTransition[];
-  flowBacked: boolean;
+  entryStageId: string;
 };
-
-function stageMeta(type: string): {
-  label: string;
-  icon: typeof Bot;
-  badgeClass: string;
-  railClass: string;
-} {
-  if (type === "agent") {
-    return {
-      label: "Agent",
-      icon: Bot,
-      badgeClass:
-        "border-transparent bg-[var(--console-accent-soft)] text-[var(--console-accent)]",
-      railClass: "bg-[var(--console-accent)]",
-    };
-  }
-  if (type === "human") {
-    return {
-      label: "Human gate",
-      icon: ShieldCheck,
-      badgeClass: "border-transparent bg-amber-50 text-amber-800",
-      railClass: "bg-amber-500",
-    };
-  }
-  if (type === "script") {
-    return {
-      label: "Script",
-      icon: Terminal,
-      badgeClass: "border-transparent bg-slate-100 text-slate-700",
-      railClass: "bg-slate-500",
-    };
-  }
-  return {
-    label: "Stage",
-    icon: GitBranch,
-    badgeClass: "border-transparent bg-[var(--console-panel)] text-[var(--console-muted)]",
-    railClass: "bg-[var(--console-faint)]",
-  };
-}
 
 export function ProcessBoard({
   productId,
   processId,
   stages,
   items,
-  transitions,
-  flowBacked,
+  entryStageId,
 }: Props) {
-  const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [pending, startTransition] = useTransition();
-  const [busyItemId, setBusyItemId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-
-  function onCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    const formData = new FormData();
-    formData.set("processId", processId);
-    formData.set("stageId", stages[0]?.id ?? "");
-    formData.set("title", title);
-    formData.set("body", body);
-    startTransition(async () => {
-      try {
-        await createWorkItemAction(formData);
-        setTitle("");
-        setBody("");
-        router.refresh();
-      } catch {
-        setError("Could not create work item.");
-      }
-    });
-  }
-
-  function onMove(itemId: string, stageId: string) {
-    setError(null);
-    setNotice(null);
-    setBusyItemId(itemId);
-    const formData = new FormData();
-    formData.set("itemId", itemId);
-    formData.set("stageId", stageId);
-    startTransition(async () => {
-      try {
-        await moveWorkItemAction(formData);
-        router.refresh();
-      } catch {
-        setError("That move is not allowed by this flow.");
-      } finally {
-        setBusyItemId(null);
-      }
-    });
-  }
-
-  function onAdvance(
-    itemId: string,
-    outcome: string,
-    options?: { execute?: boolean },
-  ) {
-    setError(null);
-    setNotice(null);
-    setBusyItemId(itemId);
-    const formData = new FormData();
-    formData.set("itemId", itemId);
-    formData.set("outcome", outcome);
-    if (options?.execute) formData.set("execute", "1");
-    startTransition(async () => {
-      try {
-        const result = await advanceWorkItemAction(formData);
-        setNotice(result.summary);
-        router.refresh();
-      } catch {
-        setError("Could not advance this work item.");
-      } finally {
-        setBusyItemId(null);
-      }
-    });
-  }
-
-  function legalTargets(stage: Stage): Stage[] {
-    if (!flowBacked) {
-      return stages.filter((s) => s.id !== stage.id);
-    }
-    const fromKey = stage.stage_key || stage.id;
-    const keys = new Set(
-      transitions
-        .filter((t) => t.from_stage_key === fromKey)
-        .map((t) => t.to_stage_key)
-        .filter((key) => key !== "done"),
-    );
-    return stages.filter((s) => keys.has(s.stage_key || s.id));
-  }
-
   return (
     <div className="space-y-4">
-      <form
-        onSubmit={onCreate}
-        className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]"
-      >
-        <div className="flex items-center gap-2 border-b border-[var(--console-line)] px-4 py-3">
-          <ScrollText className="size-3.5 text-[var(--console-accent)]" />
-          <p className="text-[13px] font-semibold text-[var(--console-ink)]">
-            New work item
-          </p>
-          {flowBacked ? (
-            <Badge
-              variant="outline"
-              className="ml-auto h-5 border-[var(--console-line)] bg-[var(--console-panel)] text-[10px] text-[var(--console-muted)]"
-            >
-              Starts at entry stage
-            </Badge>
-          ) : null}
-        </div>
-        <div className="grid gap-3 p-4 md:grid-cols-[1.1fr_1.4fr_auto] md:items-end">
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-[var(--console-muted)]">
-              Title
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to move through this flow?"
-              required
-              className="h-9 border-[var(--console-line)] bg-white text-[13px] shadow-none focus-visible:border-[var(--console-accent)] focus-visible:ring-[var(--console-accent-ring)]"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-[var(--console-muted)]">
-              Brief
-            </label>
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Acceptance criteria, context, links…"
-              className="min-h-9 resize-none border-[var(--console-line)] bg-white text-[13px] shadow-none focus-visible:border-[var(--console-accent)] focus-visible:ring-[var(--console-accent-ring)]"
-            />
-          </div>
-          <Button
-            type="submit"
-            disabled={pending || !title.trim()}
-            className="h-9 gap-1.5 bg-[var(--console-ink)] text-[13px] text-white hover:bg-[var(--console-accent)]"
-          >
-            {pending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Plus className="size-3.5" />
-            )}
-            Add item
-          </Button>
-        </div>
-        {error || notice ? (
-          <div
-            className={cn(
-              "border-t px-4 py-2.5 text-[12px]",
-              error
-                ? "border-red-100 bg-red-50 text-red-700"
-                : "border-[var(--console-line)] bg-[var(--console-accent-soft)] text-[var(--console-accent)]",
-            )}
-          >
-            {error ?? notice}
-          </div>
-        ) : null}
-      </form>
+      <CreateIssueForm processId={processId} entryStageId={entryStageId} />
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--console-line)] bg-[var(--console-surface)] px-6 py-16 text-center shadow-[var(--console-shadow)]">
@@ -251,8 +37,8 @@ export function ProcessBoard({
             Empty board
           </p>
           <p className="mt-1 max-w-sm text-[13px] text-[var(--console-muted)]">
-            Add the first work item to start this lifecycle. Flow-backed boards
-            advance through agent runs, human gates, and scripts.
+            Add an issue to see it across stages. Open an issue to advance the
+            process — actions live on the issue, not on cards.
           </p>
         </div>
       ) : (
@@ -316,27 +102,21 @@ export function ProcessBoard({
                 <div className="flex flex-1 flex-col gap-2 bg-[var(--console-panel)]/50 p-2.5">
                   {columnItems.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-[var(--console-line)] bg-white/60 px-3 py-6 text-center text-[11px] text-[var(--console-faint)]">
-                      No items here
+                      No issues here
                     </div>
                   ) : (
                     columnItems.map((item) => {
-                      const busy = pending && busyItemId === item.id;
                       const done = item.status === "done";
                       return (
-                        <article
+                        <Link
                           key={item.id}
-                          className={cn(
-                            "group rounded-lg bg-white p-3 shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)] transition hover:ring-[var(--console-accent)]/30",
-                            busy && "opacity-70",
-                          )}
+                          href={`/app/products/${productId}/processes/${processId}?item=${item.id}&view=board`}
+                          className="group rounded-lg bg-white p-3 shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)] transition hover:ring-[var(--console-accent)]/30"
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <Link
-                              href={`/app/products/${productId}/processes/${processId}?item=${item.id}`}
-                              className="text-[13px] font-medium leading-snug text-[var(--console-ink)] transition hover:text-[var(--console-accent)]"
-                            >
+                            <p className="text-[13px] font-medium leading-snug text-[var(--console-ink)] transition group-hover:text-[var(--console-accent)]">
                               {item.title}
-                            </Link>
+                            </p>
                             {done ? (
                               <Badge
                                 variant="outline"
@@ -352,95 +132,7 @@ export function ProcessBoard({
                               {item.body}
                             </p>
                           ) : null}
-
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {flowBacked && stage.stage_type === "agent" ? (
-                              <Button
-                                type="button"
-                                size="xs"
-                                disabled={busy || done}
-                                onClick={() =>
-                                  onAdvance(item.id, "done", { execute: true })
-                                }
-                                className="h-7 gap-1 bg-[var(--console-accent)] text-[11px] text-white hover:bg-[var(--console-accent-hover)]"
-                              >
-                                {busy ? (
-                                  <Loader2 className="size-3 animate-spin" />
-                                ) : (
-                                  <Bot className="size-3" />
-                                )}
-                                Run agent
-                              </Button>
-                            ) : null}
-
-                            {flowBacked && stage.stage_type === "script" ? (
-                              <Button
-                                type="button"
-                                size="xs"
-                                disabled={busy || done}
-                                onClick={() =>
-                                  onAdvance(item.id, "success", {
-                                    execute: true,
-                                  })
-                                }
-                                className="h-7 gap-1 bg-slate-800 text-[11px] text-white hover:bg-slate-700"
-                              >
-                                {busy ? (
-                                  <Loader2 className="size-3 animate-spin" />
-                                ) : (
-                                  <Terminal className="size-3" />
-                                )}
-                                Run script
-                              </Button>
-                            ) : null}
-
-                            {flowBacked && stage.stage_type === "human" ? (
-                              <>
-                                <Button
-                                  type="button"
-                                  size="xs"
-                                  disabled={busy || done}
-                                  onClick={() => onAdvance(item.id, "approve")}
-                                  className="h-7 gap-1 bg-[var(--console-ink)] text-[11px] text-white hover:bg-[var(--console-accent)]"
-                                >
-                                  {busy ? (
-                                    <Loader2 className="size-3 animate-spin" />
-                                  ) : (
-                                    <Check className="size-3" />
-                                  )}
-                                  Approve
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="xs"
-                                  variant="outline"
-                                  disabled={busy || done}
-                                  onClick={() => onAdvance(item.id, "reject")}
-                                  className="h-7 gap-1 border-[var(--console-line)] bg-white text-[11px] text-[var(--console-muted)] hover:bg-[var(--console-hover)] hover:text-[var(--console-ink)]"
-                                >
-                                  <X className="size-3" />
-                                  Reject
-                                </Button>
-                              </>
-                            ) : null}
-
-                            {!flowBacked
-                              ? legalTargets(stage).map((s) => (
-                                  <Button
-                                    key={s.id}
-                                    type="button"
-                                    size="xs"
-                                    variant="outline"
-                                    disabled={busy}
-                                    onClick={() => onMove(item.id, s.id)}
-                                    className="h-7 border-[var(--console-line)] bg-white text-[11px] text-[var(--console-muted)] hover:border-[var(--console-accent)] hover:text-[var(--console-accent)]"
-                                  >
-                                    → {s.name}
-                                  </Button>
-                                ))
-                              : null}
-                          </div>
-                        </article>
+                        </Link>
                       );
                     })
                   )}
