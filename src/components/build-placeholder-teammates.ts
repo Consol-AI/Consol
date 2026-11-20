@@ -1,10 +1,12 @@
 import type { TeammatePlaceHolder } from "@/components/workspace-dashboard";
 import type { Member, Product } from "@/lib/factory";
+import type { TeammateRecord } from "@/lib/teammates/types";
 
-/** Placeholder mix of humans + AI agents for dashboard exploration. */
+/** Humans from memberships + optional seed people + registry agent teammates. */
 export function buildPlaceholderTeammates(input: {
   members: Member[];
   products: Product[];
+  agents?: TeammateRecord[];
 }): TeammatePlaceHolder[] {
   const productIds = input.products.map((p) => p.id);
   const first = productIds[0];
@@ -27,7 +29,6 @@ export function buildPlaceholderTeammates(input: {
     email: m.email,
   }));
 
-  // Seed a couple of fictional humans so the mix reads clearly with a solo org.
   const seedPool: TeammatePlaceHolder[] = [
     {
       id: "seed-maya",
@@ -51,32 +52,20 @@ export function buildPlaceholderTeammates(input: {
       ? []
       : seedPool.slice(0, Math.max(0, 3 - humans.length));
 
-  const agents: TeammatePlaceHolder[] = [
-    {
-      id: "agent-forge",
-      name: "Forge",
-      role: "AI Copilot",
-      kind: "agent",
-      status: "ready",
-      productIds,
-    },
-    {
-      id: "agent-scout",
-      name: "Scout",
-      role: "Research Agent",
-      kind: "agent",
-      status: "idle",
-      productIds: [first, third].filter(Boolean) as string[],
-    },
-    {
-      id: "agent-craft",
-      name: "Craft",
-      role: "Design Agent",
-      kind: "agent",
-      status: "ready",
-      productIds: [second, first].filter(Boolean) as string[],
-    },
-  ];
+  const agents: TeammatePlaceHolder[] = (input.agents ?? []).map((a) => ({
+    id: a.id,
+    name: a.name,
+    role: a.role,
+    kind: "agent" as const,
+    status:
+      a.status === "local"
+        ? ("ready" as const)
+        : a.status === "stopped"
+          ? ("idle" as const)
+          : ("ready" as const),
+    productIds,
+    slug: a.slug,
+  }));
 
   return [...humans, ...seedHumans, ...agents];
 }

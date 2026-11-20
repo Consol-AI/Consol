@@ -23,6 +23,10 @@
 # local PGlite data
 .data/
 
+# per-teammate Agent SDK installs (scaffolds stay tracked)
+agents/**/node_modules/
+agents/**/state/
+
 # misc
 .DS_Store
 *.pem
