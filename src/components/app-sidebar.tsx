@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderKanban, Home, Users } from "lucide-react";
+import { FolderKanban, GitBranch, Home, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV: {
@@ -13,6 +13,7 @@ const NAV: {
 }[] = [
   { href: "/app", label: "Home", icon: Home, exact: true },
   { href: "/app/projects", label: "Projects", icon: FolderKanban },
+  { href: "/app/flows", label: "Flows", icon: GitBranch },
   { href: "/app/teammates", label: "Teammates", icon: Users },
 ];
 
