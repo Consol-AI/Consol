@@ -6,8 +6,8 @@ Consol is a **product factory** for cross-functional teams: shared product works
 
 1. Open the factory and land in your org workspace (created automatically).
 2. Create a **product**.
-3. Attach process templates (PM, software delivery, design, data analysis).
-4. Move **work items** across stages on a board.
+3. Attach process flow templates (PM, software delivery, design, data analysis) — typed stages (`agent` / `human` / `script`) with transitions.
+4. Advance **work items** through the flow (run agents, approve human gates, run scripts).
 5. Chat with **Forge AI** on a process or a specific item.
 
 ## Run locally

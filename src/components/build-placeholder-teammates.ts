@@ -1,4 +1,5 @@
 import type { TeammatePlaceHolder } from "@/components/workspace-dashboard";
+import { listAgents } from "@/lib/agents";
 import type { Member, Product } from "@/lib/factory";
 
 /** Placeholder mix of humans + AI agents for dashboard exploration. */
@@ -51,32 +52,19 @@ export function buildPlaceholderTeammates(input: {
       ? []
       : seedPool.slice(0, Math.max(0, 3 - humans.length));
 
-  const agents: TeammatePlaceHolder[] = [
-    {
-      id: "agent-forge",
-      name: "Forge",
-      role: "AI Copilot",
-      kind: "agent",
-      status: "ready",
-      productIds,
-    },
-    {
-      id: "agent-scout",
-      name: "Scout",
-      role: "Research Agent",
-      kind: "agent",
-      status: "idle",
-      productIds: [first, third].filter(Boolean) as string[],
-    },
-    {
-      id: "agent-craft",
-      name: "Craft",
-      role: "Design Agent",
-      kind: "agent",
-      status: "ready",
-      productIds: [second, first].filter(Boolean) as string[],
-    },
-  ];
+  const agents: TeammatePlaceHolder[] = listAgents().map((agent, index) => ({
+    id: `agent-${agent.key}`,
+    name: agent.name,
+    role: agent.role,
+    kind: "agent" as const,
+    status: (index === 1 ? "idle" : "ready") as "ready" | "idle",
+    productIds:
+      index === 0
+        ? productIds
+        : index === 1
+          ? ([first, third].filter(Boolean) as string[])
+          : ([second, first].filter(Boolean) as string[]),
+  }));
 
   return [...humans, ...seedHumans, ...agents];
 }

@@ -1,6 +1,10 @@
 import { sql } from "@/lib/db";
+import { getFlow, listFlows } from "@/lib/flows";
+import { parseStageConfig } from "@/lib/flows/stage-config";
+import type { FlowDefinition, FlowStage, StageType } from "@/lib/flows/types";
+import { normalizeTransitions } from "@/lib/flows/types";
 import { createId } from "@/lib/id";
-import { getTemplate, PROCESS_TEMPLATES } from "@/lib/templates";
+import { PROCESS_TEMPLATES } from "@/lib/templates";
 
 export type Organization = {
   id: string;
@@ -35,7 +39,54 @@ export type Stage = {
   name: string;
   position: number;
   description: string;
+  stage_key: string;
+  stage_type: StageType | "legacy" | string;
+  config: Record<string, unknown> | string;
 };
+
+export type StageTransition = {
+  id: string;
+  process_id: string;
+  from_stage_key: string;
+  to_stage_key: string;
+  when_label: string;
+};
+
+export type StageRunEvent = {
+  id: string;
+  work_item_id: string;
+  process_id: string;
+  stage_key: string;
+  stage_type: string;
+  outcome: string;
+  summary: string;
+  created_by: string;
+  created_at: string;
+};
+
+export function stageConfig(stage: Stage): Record<string, unknown> {
+  return parseStageConfig(stage.config);
+}
+
+function stageRowConfig(stage: FlowStage): Record<string, unknown> {
+  if (stage.type === "agent") {
+    return {
+      rolePrompt: stage.rolePrompt,
+      allowedTools: stage.allowedTools,
+      agentKey: stage.agentKey ?? "forge",
+    };
+  }
+  if (stage.type === "human") {
+    return {
+      responsible: stage.responsible,
+      approves: stage.approves,
+    };
+  }
+  return {
+    path: stage.path ?? null,
+    inline: stage.inline ?? null,
+  };
+}
 
 export type WorkItem = {
   id: string;
@@ -214,9 +265,21 @@ export async function addProcessFromTemplate(input: {
   templateKey: string;
   createdBy: string;
 }): Promise<Process> {
-  const template = getTemplate(input.templateKey);
-  if (!template) throw new Error("Unknown template");
+  const flow = getFlow(input.templateKey);
+  if (!flow) throw new Error("Unknown template");
+  return addProcessFromFlow({
+    productId: input.productId,
+    flow,
+    createdBy: input.createdBy,
+  });
+}
 
+export async function addProcessFromFlow(input: {
+  productId: string;
+  flow: FlowDefinition;
+  createdBy: string;
+}): Promise<Process> {
+  const { flow } = input;
   const processId = createId("prc");
   await sql(
     `insert into processes (id, product_id, name, domain, template_key, created_by)
@@ -224,19 +287,47 @@ export async function addProcessFromTemplate(input: {
     [
       processId,
       input.productId,
-      template.name,
-      template.domain,
-      template.key,
+      flow.name,
+      flow.domain,
+      flow.key,
       input.createdBy,
     ],
   );
 
-  for (const [index, stage] of template.stages.entries()) {
+  for (const [index, stage] of flow.stages.entries()) {
     await sql(
-      `insert into stages (id, process_id, name, position, description)
-       values ($1, $2, $3, $4, $5)`,
-      [createId("stg"), processId, stage.name, index, stage.description],
+      `insert into stages (
+         id, process_id, name, position, description,
+         stage_key, stage_type, config
+       ) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        createId("stg"),
+        processId,
+        stage.name,
+        index,
+        stage.description ?? "",
+        stage.id,
+        stage.type,
+        JSON.stringify(stageRowConfig(stage)),
+      ],
     );
+  }
+
+  for (const stage of flow.stages) {
+    for (const edge of normalizeTransitions(flow.transitions, stage.id)) {
+      await sql(
+        `insert into stage_transitions (
+           id, process_id, from_stage_key, to_stage_key, when_label
+         ) values ($1, $2, $3, $4, $5)`,
+        [
+          createId("trn"),
+          processId,
+          stage.id,
+          edge.next,
+          edge.when,
+        ],
+      );
+    }
   }
 
   return (await getProcess(processId))!;
@@ -248,6 +339,74 @@ export async function listStages(processId: string): Promise<Stage[]> {
     [processId],
   );
 }
+
+export async function listStageTransitions(
+  processId: string,
+): Promise<StageTransition[]> {
+  return sql<StageTransition>(
+    `select * from stage_transitions where process_id = $1`,
+    [processId],
+  );
+}
+
+export async function addStageRunEvent(input: {
+  workItemId: string;
+  processId: string;
+  stageKey: string;
+  stageType: string;
+  outcome: string;
+  summary: string;
+  createdBy: string;
+}): Promise<StageRunEvent> {
+  const id = createId("sre");
+  await sql(
+    `insert into stage_run_events (
+       id, work_item_id, process_id, stage_key, stage_type,
+       outcome, summary, created_by
+     ) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      id,
+      input.workItemId,
+      input.processId,
+      input.stageKey,
+      input.stageType,
+      input.outcome,
+      input.summary,
+      input.createdBy,
+    ],
+  );
+  return (
+    await sql<StageRunEvent>(`select * from stage_run_events where id = $1`, [
+      id,
+    ])
+  )[0];
+}
+
+export async function listStageRunEvents(
+  workItemId: string,
+): Promise<StageRunEvent[]> {
+  return sql<StageRunEvent>(
+    `select * from stage_run_events where work_item_id = $1 order by created_at asc`,
+    [workItemId],
+  );
+}
+
+export async function setWorkItemStatus(
+  itemId: string,
+  status: string,
+): Promise<WorkItem> {
+  await sql(
+    `update work_items set status = $1, updated_at = now() where id = $2`,
+    [status, itemId],
+  );
+  return (await getWorkItem(itemId))!;
+}
+
+export function isFlowBackedProcess(process: Process): boolean {
+  return Boolean(getFlow(process.template_key));
+}
+
+export { listFlows };
 
 export async function listWorkItems(processId: string): Promise<WorkItem[]> {
   return sql<WorkItem>(

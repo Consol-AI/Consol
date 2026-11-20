@@ -9,6 +9,7 @@ import {
   getProcess,
   getWorkItem,
   listMessages,
+  listStageTransitions,
   listStages,
   listWorkItems,
 } from "@/lib/factory";
@@ -31,11 +32,15 @@ export default async function ProcessPage({
   const process = await getProcess(processId);
   if (!process || process.product_id !== product.id) notFound();
 
-  const [stages, items, processMessages] = await Promise.all([
+  const [stages, items, processMessages, transitions] = await Promise.all([
     listStages(process.id),
     listWorkItems(process.id),
     listMessages({ processId: process.id }),
+    listStageTransitions(process.id),
   ]);
+  const flowBacked =
+    transitions.length > 0 &&
+    stages.some((s) => s.stage_type && s.stage_type !== "legacy");
 
   const selected = itemId ? await getWorkItem(itemId) : null;
   const selectedSafe =
@@ -71,6 +76,8 @@ export default async function ProcessPage({
           processId={process.id}
           stages={stages}
           items={items}
+          transitions={transitions}
+          flowBacked={flowBacked}
         />
         <div className="overflow-hidden rounded-lg border border-[var(--line)]">
           <AiPanel
