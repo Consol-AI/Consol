@@ -13,7 +13,7 @@ const NAV: {
 }[] = [
   { href: "/app", label: "Home", icon: Home, exact: true },
   { href: "/app#projects", label: "Projects", icon: FolderKanban },
-  { href: "/app#teammates", label: "Teammates", icon: Users },
+  { href: "/app/teammates", label: "Teammates", icon: Users },
 ];
 
 export function AppSidebar({
@@ -55,6 +55,11 @@ export function AppSidebar({
         </p>
         {NAV.map((item) => {
           const isHome = Boolean(item.exact) && pathname === "/app";
+          const isActive =
+            isHome ||
+            (!item.exact &&
+              item.href.startsWith("/app/") &&
+              (pathname === item.href || pathname.startsWith(`${item.href}/`)));
           const Icon = item.icon;
           return (
             <Link
@@ -62,7 +67,7 @@ export function AppSidebar({
               href={item.href}
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] transition-colors",
-                isHome
+                isActive
                   ? "bg-white font-medium text-[var(--console-ink)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]"
                   : "text-[var(--console-muted)] hover:bg-white/70 hover:text-[var(--console-ink)]",
               )}
@@ -70,7 +75,7 @@ export function AppSidebar({
               <Icon
                 className={cn(
                   "size-[15px] shrink-0",
-                  isHome ? "text-[var(--console-accent)]" : "opacity-70",
+                  isActive ? "text-[var(--console-accent)]" : "opacity-70",
                 )}
                 aria-hidden
               />

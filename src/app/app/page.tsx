@@ -2,6 +2,7 @@ import { WorkspaceDashboard } from "@/components/workspace-dashboard";
 import { buildPlaceholderTeammates } from "@/components/build-placeholder-teammates";
 import { getViewer } from "@/lib/auth";
 import { ensureWorkspace, listMembers, listProducts } from "@/lib/factory";
+import { listTeammates } from "@/lib/teammates/registry";
 
 export default async function AppHomePage() {
   const viewer = await getViewer();
@@ -24,11 +25,12 @@ export default async function AppHomePage() {
   }
 
   const org = await ensureWorkspace(viewer);
-  const [products, members] = await Promise.all([
+  const [products, members, agents] = await Promise.all([
     listProducts(org.id),
     listMembers(org.id),
+    listTeammates(),
   ]);
-  const teammates = buildPlaceholderTeammates({ members, products });
+  const teammates = buildPlaceholderTeammates({ members, products, agents });
 
   return (
     <WorkspaceDashboard

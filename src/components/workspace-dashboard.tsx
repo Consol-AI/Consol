@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
@@ -26,6 +27,8 @@ export type TeammatePlaceHolder = {
   /** Product ids this teammate is linked to (placeholder wiring). */
   productIds: string[];
   email?: string;
+  /** Agent registry slug when kind is agent. */
+  slug?: string;
 };
 
 const STATUS_LABEL: Record<TeammatePlaceHolder["status"], string> = {
@@ -68,6 +71,7 @@ export function WorkspaceDashboard({
   products: Product[];
   teammates: TeammatePlaceHolder[];
 }) {
+  const router = useRouter();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     products[0]?.id ?? null,
   );
@@ -326,7 +330,7 @@ export function WorkspaceDashboard({
                   ))}
                 </ul>
                 <p className="mt-3 text-[11px] leading-relaxed text-[var(--console-faint)]">
-                  Placeholder links — click a person to filter projects.
+                  Click a person to filter projects. Agent teammates open chat.
                 </p>
               </section>
             ) : null}
@@ -337,13 +341,22 @@ export function WorkspaceDashboard({
             className="animate-rise-delay overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]"
           >
             <div className="border-b border-[var(--console-line)] px-4 py-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
-                  Teammates
-                </h2>
-                <span className="rounded-full bg-[var(--console-panel)] px-1.5 py-0.5 text-[11px] tabular-nums text-[var(--console-muted)]">
-                  {teammates.length}
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+                    Teammates
+                  </h2>
+                  <span className="rounded-full bg-[var(--console-panel)] px-1.5 py-0.5 text-[11px] tabular-nums text-[var(--console-muted)]">
+                    {teammates.length}
+                  </span>
+                </div>
+                <Link
+                  href="/app/teammates/new"
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--console-accent)] hover:text-[var(--console-accent-hover)]"
+                >
+                  <Plus className="size-3" aria-hidden />
+                  Create
+                </Link>
               </div>
               <p className="mt-1 text-[12px] text-[var(--console-faint)]">
                 {selectedProduct
@@ -353,6 +366,24 @@ export function WorkspaceDashboard({
             </div>
 
             <ul className="divide-y divide-[var(--console-line)]">
+              {teammates.length === 0 ? (
+                <li className="px-4 py-10 text-center">
+                  <p className="text-[13px] font-medium text-[var(--console-ink)]">
+                    No teammates yet
+                  </p>
+                  <p className="mt-1 text-[12px] text-[var(--console-muted)]">
+                    Create an agent teammate from a preset or blank.
+                  </p>
+                  <Link href="/app/teammates/new" className="mt-3 inline-block">
+                    <Button
+                      size="sm"
+                      className="h-8 rounded-md bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+                    >
+                      Create teammate
+                    </Button>
+                  </Link>
+                </li>
+              ) : null}
               {teammates.map((teammate) => {
                 const onProject =
                   !selectedProductId ||
@@ -364,7 +395,13 @@ export function WorkspaceDashboard({
                   <li key={teammate.id}>
                     <button
                       type="button"
-                      onClick={() => selectTeammate(teammate.id)}
+                      onClick={() => {
+                        if (teammate.kind === "agent" && teammate.slug) {
+                          router.push(`/app/teammates/${teammate.slug}`);
+                          return;
+                        }
+                        selectTeammate(teammate.id);
+                      }}
                       className={cn(
                         "flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left transition-colors",
                         active

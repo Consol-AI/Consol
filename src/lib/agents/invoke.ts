@@ -6,6 +6,8 @@ import type {
   AgentToolName,
 } from "@/lib/agents/types";
 import { getLanguageModel, hasAiKey } from "@/lib/ai";
+import { getTeammateBySlug } from "@/lib/teammates/registry";
+import { runTeammateTurn } from "@/lib/teammates/runtime";
 
 function mockAgentReply(input: AgentInvokeInput, tools: AgentToolName[]): string {
   const toolsLine = tools.length
@@ -33,6 +35,39 @@ function mockAgentReply(input: AgentInvokeInput, tools: AgentToolName[]): string
 export async function invokeAgent(
   input: AgentInvokeInput,
 ): Promise<AgentInvokeResult> {
+  const teammate = await getTeammateBySlug(input.agentKey);
+  if (teammate) {
+    const rolePrompt = input.rolePrompt?.trim();
+    const message = [
+      rolePrompt ? `Stage role prompt:\n${rolePrompt}` : "",
+      `Stage: ${input.stageName}`,
+      `Title: ${input.workItemTitle}`,
+      `Brief:\n${input.workItemBody || "(none)"}`,
+      input.userHint ? `Hint: ${input.userHint}` : "",
+      input.allowedTools?.length
+        ? `Allowed tools: ${input.allowedTools.join(", ")}`
+        : teammate.tools.length
+          ? `Allowed tools: ${teammate.tools.join(", ")}`
+          : "",
+      "Produce a concrete stage deliverable teammates can review.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const turn = await runTeammateTurn({ teammate, message });
+    const toolsUsed = (
+      input.allowedTools?.length ? input.allowedTools : teammate.tools
+    ).slice(0, 3) as AgentToolName[];
+
+    return {
+      agentKey: teammate.slug,
+      agentName: teammate.name,
+      content: turn.reply,
+      toolsUsed,
+      mock: turn.source === "mock",
+    };
+  }
+
   const agent = getAgent(input.agentKey);
   if (!agent) {
     throw new Error(`Unknown agent: ${input.agentKey}`);
