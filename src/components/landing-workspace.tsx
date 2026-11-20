@@ -1,15 +1,13 @@
-/** Full-bleed living product plane — denser than a static wireframe. */
+/** Full-bleed product plane — mirrors the real Consol console. */
 export function LandingWorkspace() {
   return (
     <div
       aria-hidden
-      className="landing-workspace relative flex h-full min-h-[420px] w-full overflow-hidden border-t border-[var(--landing-ink)]/10 bg-[var(--console-bg)] md:min-h-[560px]"
+      className="landing-workspace flex h-full min-h-[400px] w-full overflow-hidden border-t border-[var(--console-line)] bg-[var(--console-bg)] md:min-h-[520px]"
     >
-      <div className="landing-sheen pointer-events-none absolute inset-0 z-[1]" />
-
-      <aside className="hidden w-[196px] shrink-0 border-r border-[var(--console-line)] bg-[var(--console-sidebar)] p-4 md:flex md:flex-col">
+      <aside className="hidden w-[200px] shrink-0 flex-col border-r border-[var(--console-line)] bg-[var(--console-sidebar)] p-4 md:flex">
         <div className="flex items-center gap-2.5">
-          <span className="flex size-7 items-center justify-center rounded-md bg-[var(--landing-ink)] text-[11px] font-semibold text-[var(--landing-signal)]">
+          <span className="flex size-7 items-center justify-center rounded-md bg-[var(--console-ink)] text-[11px] font-semibold text-white">
             C
           </span>
           <span className="min-w-0">
@@ -30,35 +28,11 @@ export function LandingWorkspace() {
               key={label}
               className={
                 i === 0
-                  ? "rounded-md bg-[var(--landing-signal)]/25 px-2.5 py-1.5 text-[13px] font-medium text-[var(--landing-ink)]"
+                  ? "rounded-md bg-[var(--console-hover)] px-2.5 py-1.5 text-[13px] font-medium text-[var(--console-ink)]"
                   : "px-2.5 py-1.5 text-[13px] text-[var(--console-muted)]"
               }
             >
               {label}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-auto space-y-2 border-t border-[var(--console-line)] pt-4">
-          <p className="text-[10px] font-medium tracking-[0.12em] text-[var(--console-faint)]">
-            LIVE FLOORS
-          </p>
-          {[
-            { name: "Checkout redesign", tone: "active" },
-            { name: "Pricing experiment", tone: "wait" },
-            { name: "Funnel health", tone: "run" },
-          ].map((floor) => (
-            <div key={floor.name} className="flex items-center gap-2 text-[12px]">
-              <span
-                className={
-                  floor.tone === "active"
-                    ? "landing-dot size-1.5 rounded-full bg-[var(--landing-signal-deep)]"
-                    : floor.tone === "run"
-                      ? "landing-dot-delay size-1.5 rounded-full bg-[var(--console-accent)]"
-                      : "size-1.5 rounded-full bg-[var(--console-faint)]"
-                }
-              />
-              <span className="truncate text-[var(--console-ink)]">{floor.name}</span>
             </div>
           ))}
         </div>
@@ -68,106 +42,70 @@ export function LandingWorkspace() {
         <div className="flex items-start justify-between gap-4 border-b border-[var(--console-line)] px-4 py-3 md:px-5 md:py-4">
           <div>
             <p className="text-[12px] text-[var(--console-faint)]">Northwind</p>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="landing-dot size-2 rounded-sm bg-[var(--landing-signal-deep)]" />
-              <p className="text-[17px] font-semibold tracking-tight text-[var(--console-ink)]">
-                Forge
-              </p>
+            <div className="mt-1 flex items-center gap-2.5">
+              <span className="flex size-6 items-center justify-center rounded-md bg-[var(--console-agent)] text-[10px] font-semibold text-[var(--console-accent)]">
+                AI
+              </span>
+              <div>
+                <p className="text-[17px] font-semibold tracking-tight text-[var(--console-ink)]">
+                  Forge
+                </p>
+                <p className="text-[12px] text-[var(--console-muted)]">
+                  Coordinate tasks and decisions across the factory
+                </p>
+              </div>
             </div>
-            <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
-              Coordinate tasks and decisions across the factory
-            </p>
           </div>
-          <div className="hidden shrink-0 gap-4 text-[11px] text-[var(--console-faint)] sm:flex">
-            <span>
-              <strong className="text-[var(--landing-ink)]">3</strong> need you
-            </span>
-            <span>
-              <strong className="text-[var(--landing-ink)]">2</strong> agents
-            </span>
-            <span>
-              <strong className="text-[var(--landing-ink)]">4</strong> floors
-            </span>
-          </div>
+          <p className="hidden shrink-0 pt-1 text-[11px] text-[var(--console-faint)] sm:block">
+            3 need you · 2 agents · 4 projects
+          </p>
         </div>
 
         <div className="flex min-h-0 flex-1">
           <div className="flex min-w-0 flex-1 flex-col px-4 py-4 md:px-5 md:py-5">
-            <div className="mb-4 flex flex-wrap gap-2">
-              {[
-                "What needs my decision today?",
-                "Prioritize checkout work",
-                "Draft eng brief",
-              ].map((chip, i) => (
-                <span
-                  key={chip}
-                  className="landing-chip rounded-md border border-[var(--console-line)] bg-white px-2.5 py-1 text-[11px] text-[var(--console-muted)]"
-                  style={{ animationDelay: `${0.35 + i * 0.08}s` }}
-                >
-                  {chip}
-                </span>
-              ))}
-            </div>
-
-            <div className="landing-chat-rise space-y-3">
-              <div className="max-w-[92%] rounded-md bg-[var(--landing-ink)] px-3 py-2 text-[13px] leading-relaxed text-white md:max-w-[80%]">
+            <div className="landing-chat-rise mx-auto flex w-full max-w-[720px] flex-col gap-3">
+              <div className="ml-6 rounded-xl bg-[var(--console-ink)] px-3.5 py-2.5 text-[13px] leading-relaxed text-white">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] opacity-60">
+                  You
+                </p>
                 What needs a decision before we ship checkout?
               </div>
-              <div className="landing-reply max-w-[95%] rounded-md border border-[var(--console-line)] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[var(--console-ink)] md:max-w-[88%]">
-                <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--landing-signal-deep)]">
-                  <span className="landing-dot size-1.5 rounded-full bg-[var(--landing-signal-deep)]" />
+              <div className="landing-reply mr-6 rounded-xl bg-[var(--console-surface)] px-3.5 py-2.5 text-[13px] leading-relaxed text-[var(--console-ink)] ring-1 ring-[var(--console-line)]">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--console-muted)]">
                   Forge
-                </span>
+                </p>
                 Three blockers: pricing experiment gate, design sign-off on empty
                 states, and the data check on funnel drop-off. I queued owners
                 and can draft the eng brief next.
               </div>
             </div>
 
-            <div className="mt-auto border-t border-[var(--console-line)] pt-4">
-              <div className="flex items-center gap-2 rounded-md border border-[var(--landing-ink)]/15 bg-white px-3 py-2.5 shadow-[inset_3px_0_0_var(--landing-signal)]">
+            <div className="mt-auto border-t border-[var(--console-line)] bg-[var(--console-surface)] px-0 pt-3">
+              <div className="flex items-center gap-2 rounded-md border border-[var(--console-line)] bg-white px-3 py-2.5">
                 <span className="flex-1 truncate text-[13px] text-[var(--console-faint)]">
                   Ask Forge to coordinate a task or decision…
                 </span>
-                <span className="landing-caret inline-block h-4 w-px shrink-0 bg-[var(--landing-ink)]" />
+                <span className="landing-caret inline-block h-4 w-px shrink-0 bg-[var(--console-ink)]" />
               </div>
             </div>
           </div>
 
-          <aside className="hidden w-[240px] shrink-0 border-l border-[var(--console-line)] bg-white p-4 lg:block">
+          <aside className="hidden w-[230px] shrink-0 border-l border-[var(--console-line)] bg-[var(--console-surface)] p-4 lg:block">
             <p className="text-[13px] font-semibold text-[var(--console-ink)]">
               Needs attention
             </p>
             <p className="mt-1 text-[11px] text-[var(--console-faint)]">
-              Across linked lifecycles
+              Decisions and agent work across projects
             </p>
             <ul className="mt-4 space-y-0">
               {[
-                {
-                  title: "Approve pricing gate",
-                  meta: "Product · Human",
-                  hot: true,
-                },
-                {
-                  title: "Empty-state critique",
-                  meta: "Design · Agent",
-                  hot: false,
-                },
-                {
-                  title: "Funnel drop-off check",
-                  meta: "Data · Script",
-                  hot: false,
-                },
-                {
-                  title: "Ship checklist",
-                  meta: "Build · Human",
-                  hot: false,
-                },
-              ].map((item, i) => (
+                { title: "Approve pricing gate", meta: "Product · Human" },
+                { title: "Empty-state critique", meta: "Design · Agent" },
+                { title: "Funnel drop-off check", meta: "Data · Script" },
+              ].map((item) => (
                 <li
                   key={item.title}
-                  className={`landing-attention border-t border-[var(--console-line)] py-3 ${item.hot ? "landing-attention-hot" : ""}`}
-                  style={{ animationDelay: `${0.55 + i * 0.1}s` }}
+                  className="border-t border-[var(--console-line)] py-3"
                 >
                   <p className="text-[13px] font-medium text-[var(--console-ink)]">
                     {item.title}

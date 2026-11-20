@@ -18,7 +18,7 @@ export function SiteHeader({
     >
       <Link
         href={viewer ? "/app" : "/"}
-        className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--landing-ink)] md:text-3xl"
+        className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--landing-ink)] md:text-2xl"
       >
         Consol
       </Link>
@@ -38,7 +38,7 @@ export function SiteHeader({
             </span>
             <Link
               href="/app"
-              className="rounded-md bg-[var(--landing-ink)] px-3 py-1.5 text-[var(--landing-signal)] transition hover:bg-[var(--landing-ink)]/90"
+              className="rounded-md bg-[var(--landing-ink)] px-3.5 py-1.5 text-white transition hover:bg-[var(--landing-ink)]/90"
             >
               Workspace
             </Link>
@@ -46,7 +46,7 @@ export function SiteHeader({
         ) : (
           <Link
             href="/app"
-            className="rounded-md bg-[var(--landing-ink)] px-3 py-1.5 text-[var(--landing-signal)] transition hover:bg-[var(--landing-ink)]/90"
+            className="rounded-md bg-[var(--landing-ink)] px-3.5 py-1.5 text-white transition hover:bg-[var(--landing-ink)]/90"
           >
             Open factory
           </Link>

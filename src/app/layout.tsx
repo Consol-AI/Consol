@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Manrope, Space_Grotesk } from "next/font/google";
+import { Manrope, Outfit } from "next/font/google";
 import { getSiteUrl, siteConfig } from "@/lib/site";
 import "./globals.css";
 
-const display = Space_Grotesk({
+const display = Outfit({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["500", "600", "700"],

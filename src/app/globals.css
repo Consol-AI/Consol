@@ -60,14 +60,13 @@
   --hero-mid: #1d3a2d;
   --hero-glow: #2f6b4f;
 
-  /* Landing — signal lamp (acid lime on cool stone, not gray wireframe) */
-  --landing-bg: #e8eee9;
-  --landing-mist: #f3f7f4;
-  --landing-ink: #0b1220;
-  --landing-quiet: #3f4f4a;
-  --landing-line: #c9d5ce;
-  --landing-signal: #d6ff3a;
-  --landing-signal-deep: #7a9a00;
+  /* Landing — quiet forest daylight (product teal, no neon) */
+  --landing-bg: #f4f6f5;
+  --landing-soft: #eef6f2;
+  --landing-ink: #14241c;
+  --landing-quiet: #4d5c55;
+  --landing-line: #d5ddd8;
+  --landing-accent: #0f766e;
 
   /* Console — cool neutrals + teal accent */
   --console-bg: #f6f7f8;
@@ -146,9 +145,6 @@
   }
   .landing-root {
     background-color: var(--landing-bg);
-    background-image:
-      radial-gradient(ellipse 80% 50% at 0% 0%, rgb(214 255 58 / 0.16), transparent 55%),
-      linear-gradient(180deg, #eef3ef 0%, var(--landing-bg) 40%, #dde6e0 100%);
     color: var(--landing-ink);
   }
 }
@@ -206,7 +202,7 @@
 @keyframes landing-workspace-in {
   from {
     opacity: 0;
-    transform: translateY(28px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -217,7 +213,7 @@
 @keyframes landing-chat-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -236,112 +232,20 @@
   }
 }
 
-@keyframes landing-signal-draw {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-@keyframes landing-dot-pulse {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.35);
-  }
-}
-
-@keyframes landing-sheen {
-  0% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(120%);
-  }
-}
-
-@keyframes landing-attention-hot {
-  0%,
-  100% {
-    background-color: transparent;
-  }
-  50% {
-    background-color: rgb(214 255 58 / 0.18);
-  }
-}
-
 .landing-workspace {
-  animation: landing-workspace-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+  animation: landing-workspace-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
 }
 
 .landing-chat-rise {
-  animation: landing-chat-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+  animation: landing-chat-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
 }
 
 .landing-reply {
-  animation: landing-chat-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
+  animation: landing-chat-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.48s both;
 }
 
 .landing-caret {
   animation: landing-caret 1.05s steps(1) infinite;
-}
-
-.landing-stage-label {
-  animation: landing-chat-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.landing-signal-bar {
-  transform-origin: left center;
-  animation: landing-signal-draw 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
-}
-
-.landing-dot {
-  animation: landing-dot-pulse 2s ease-in-out infinite;
-}
-
-.landing-dot-delay {
-  animation: landing-dot-pulse 2.4s ease-in-out 0.6s infinite;
-}
-
-.landing-chip {
-  animation: landing-chat-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.landing-attention {
-  animation: landing-chat-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.landing-attention-hot {
-  margin-inline: -0.5rem;
-  padding-inline: 0.5rem;
-  border-radius: 0.375rem;
-  animation:
-    landing-chat-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both,
-    landing-attention-hot 2.8s ease-in-out 1s infinite;
-}
-
-.landing-sheen::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 35%,
-    rgb(214 255 58 / 0.08) 48%,
-    transparent 62%
-  );
-  animation: landing-sheen 7s ease-in-out 1.2s infinite;
-}
-
-.landing-grain {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
-  mix-blend-mode: multiply;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -353,15 +257,7 @@
   .landing-workspace,
   .landing-chat-rise,
   .landing-reply,
-  .landing-caret,
-  .landing-stage-label,
-  .landing-signal-bar,
-  .landing-dot,
-  .landing-dot-delay,
-  .landing-chip,
-  .landing-attention,
-  .landing-attention-hot,
-  .landing-sheen::before {
+  .landing-caret {
     animation: none !important;
   }
 }

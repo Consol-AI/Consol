@@ -16,31 +16,21 @@ export default function Image() {
           justifyContent: "space-between",
           padding: "64px 72px",
           background:
-            "radial-gradient(ellipse at 0% 0%, rgba(214,255,58,0.4), transparent 50%), linear-gradient(160deg, #f4f7f2 0%, #e8eee9 50%, #dfe8e3 100%)",
-          color: "#0b1220",
+            "radial-gradient(ellipse at 15% 0%, rgba(15,118,110,0.10), transparent 50%), linear-gradient(180deg, #fbfbfc 0%, #f6f7f8 60%, #eef1f3 100%)",
+          color: "#111827",
           fontFamily: "ui-sans-serif, system-ui, sans-serif",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 84,
-              fontWeight: 700,
-              letterSpacing: "-0.05em",
-              lineHeight: 1,
-            }}
-          >
-            Consol
-          </div>
-          <div
-            style={{
-              display: "flex",
-              width: 128,
-              height: 10,
-              background: "#d6ff3a",
-            }}
-          />
+        <div
+          style={{
+            display: "flex",
+            fontSize: 76,
+            fontWeight: 650,
+            letterSpacing: "-0.04em",
+            lineHeight: 1,
+          }}
+        >
+          Consol
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div
@@ -48,9 +38,9 @@ export default function Image() {
               display: "flex",
               fontSize: 36,
               fontWeight: 600,
-              letterSpacing: "-0.03em",
-              lineHeight: 1.15,
-              maxWidth: 860,
+              letterSpacing: "-0.025em",
+              lineHeight: 1.2,
+              maxWidth: 820,
             }}
           >
             Every team&apos;s lifecycle on one floor — with AI in the loop.
@@ -59,12 +49,12 @@ export default function Image() {
             style={{
               display: "flex",
               fontSize: 22,
-              color: "#3f4f4a",
-              maxWidth: 720,
+              color: "#4b5563",
+              maxWidth: 700,
               lineHeight: 1.35,
             }}
           >
-            Product · Build · Design · Data — sharing one board.
+            Product, engineering, design, and data — sharing one board.
           </div>
         </div>
       </div>
