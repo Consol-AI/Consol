@@ -72,31 +72,39 @@ export default async function HomePage() {
       <section className="relative isolate flex min-h-[100svh] flex-col overflow-hidden">
         <div
           aria-hidden
-          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_90%_60%_at_0%_0%,rgb(15_118_110_/_0.11),transparent_52%),radial-gradient(ellipse_70%_50%_at_100%_10%,rgb(148_163_184_/_0.22),transparent_48%),linear-gradient(165deg,#f8fafb_0%,#f1f5f6_45%,#e8eef0_100%)]"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_55%_at_0%_-10%,rgb(214_255_58_/_0.35),transparent_55%),radial-gradient(ellipse_55%_45%_at_100%_0%,rgb(15_118_110_/_0.14),transparent_50%),linear-gradient(160deg,#f4f7f2_0%,#e8eee9_42%,#dfe8e3_100%)]"
+        />
+        <div
+          aria-hidden
+          className="landing-grain absolute inset-0 -z-10 opacity-[0.35]"
         />
 
-        <div className="mx-auto flex w-full max-w-6xl shrink-0 items-end gap-10 px-6 pb-6 pt-24 md:px-10 md:pb-8 md:pt-28">
-          <div className="min-w-0 flex-1">
-            <p className="animate-rise font-[family-name:var(--font-display)] text-6xl font-semibold leading-[0.88] tracking-tight text-[var(--landing-ink)] md:text-8xl lg:text-[7.25rem]">
+        <div className="mx-auto flex w-full max-w-6xl shrink-0 flex-col gap-6 px-6 pb-4 pt-24 md:flex-row md:items-end md:justify-between md:gap-8 md:px-10 md:pb-5 md:pt-24">
+          <div className="min-w-0 max-w-2xl">
+            <p className="animate-rise font-[family-name:var(--font-display)] text-5xl font-semibold leading-[0.86] tracking-tight text-[var(--landing-ink)] md:text-7xl lg:text-[6.5rem]">
               Consol
             </p>
-            <h1 className="animate-rise-delay mt-4 max-w-xl text-xl leading-snug text-[var(--landing-ink)] md:mt-5 md:text-2xl">
+            <span
+              aria-hidden
+              className="landing-signal-bar mt-3 block h-2 w-24 bg-[var(--landing-signal)] md:mt-4 md:h-2.5 md:w-28"
+            />
+            <h1 className="animate-rise-delay mt-4 max-w-xl text-lg leading-snug text-[var(--landing-ink)] md:text-xl lg:text-2xl">
               Every team&apos;s lifecycle on one floor — with AI in the loop.
             </h1>
-            <p className="animate-rise-delay-2 mt-3 max-w-lg text-[15px] leading-relaxed text-[var(--landing-quiet)] md:text-base">
+            <p className="animate-rise-delay-2 mt-2 max-w-lg text-sm leading-relaxed text-[var(--landing-quiet)] md:text-[15px]">
               Link product, delivery, design, and data so people and agents
               share the same board.
             </p>
-            <div className="animate-rise-delay-2 mt-7 flex flex-wrap gap-3">
+            <div className="animate-rise-delay-2 mt-5 flex flex-wrap gap-3">
               <Link
                 href="/app"
-                className="rounded-md bg-[var(--landing-ink)] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+                className="rounded-md bg-[var(--landing-ink)] px-5 py-2.5 text-sm font-semibold text-[var(--landing-signal)] transition hover:brightness-110"
               >
                 Enter your factory
               </Link>
               <a
                 href="#how"
-                className="rounded-md border border-[var(--landing-ink)]/25 bg-white/60 px-5 py-2.5 text-sm text-[var(--landing-ink)] transition hover:border-[var(--landing-ink)]/50"
+                className="rounded-md border border-[var(--landing-ink)]/20 bg-white/70 px-5 py-2.5 text-sm font-medium text-[var(--landing-ink)] transition hover:border-[var(--landing-ink)]/45"
               >
                 See how it fits
               </a>
@@ -105,25 +113,27 @@ export default async function HomePage() {
 
           <ul
             aria-hidden
-            className="animate-rise-delay mb-2 hidden shrink-0 flex-col items-end gap-1 font-[family-name:var(--font-display)] text-4xl font-semibold leading-none tracking-tight text-[var(--landing-ink)]/[0.14] md:flex lg:text-5xl"
+            className="animate-rise-delay flex flex-wrap gap-x-4 gap-y-1 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight md:mb-1 md:flex-col md:items-end md:gap-1 md:text-4xl lg:text-5xl"
           >
             {["Product", "Build", "Design", "Data"].map((label, i) => (
               <li
                 key={label}
-                className="landing-stage-label"
-                style={{ animationDelay: `${0.2 + i * 0.06}s` }}
+                className="landing-stage-label text-[var(--landing-ink)]/25 md:text-[var(--landing-ink)]/[0.18]"
+                style={{ animationDelay: `${0.18 + i * 0.07}s` }}
               >
-                {label}
+                <span className={i === 1 ? "text-[var(--landing-signal-deep)]" : undefined}>
+                  {label}
+                </span>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="relative mt-2 w-full flex-1 md:mt-4">
+        <div className="relative mt-1 w-full flex-1">
           <LandingWorkspace />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--landing-bg)] to-transparent md:h-24"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[var(--landing-bg)] to-transparent md:h-20"
           />
         </div>
       </section>
@@ -132,7 +142,10 @@ export default async function HomePage() {
         id="how"
         className="relative z-[2] mx-auto w-full max-w-5xl px-6 py-20 md:px-10 md:py-28"
       >
-        <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight md:text-5xl">
+        <p className="font-[family-name:var(--font-display)] text-sm font-semibold tracking-[0.16em] text-[var(--landing-signal-deep)]">
+          HOW IT FITS
+        </p>
+        <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight md:text-5xl">
           One floor for many processes
         </h2>
         <p className="mt-4 max-w-2xl text-[var(--landing-quiet)] md:text-lg">
@@ -140,26 +153,32 @@ export default async function HomePage() {
           lifecycles linked so people and AI share the same board, brief, and
           thread.
         </p>
-        <div className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
+        <div className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
           {[
             {
+              n: "01",
               title: "Shared products",
               copy: "Stand up a product workspace your whole company can see and contribute to.",
             },
             {
+              n: "02",
               title: "Linked lifecycles",
               copy: "Attach PM, engineering, design, or data processes — each with typed stages.",
             },
             {
+              n: "03",
               title: "AI in the loop",
               copy: "Ask Forge for next steps, briefs, or critiques scoped to the work in front of you.",
             },
           ].map((item) => (
             <div
               key={item.title}
-              className="border-t border-[var(--landing-line)] pt-5"
+              className="border-t-2 border-[var(--landing-ink)] pt-5"
             >
-              <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
+              <p className="font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--landing-signal-deep)]">
+                {item.n}
+              </p>
+              <h3 className="mt-2 font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight">
                 {item.title}
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-[var(--landing-quiet)] md:text-[15px]">
@@ -170,12 +189,16 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="relative z-[2] border-y border-[var(--landing-line)] bg-white/70">
-        <div className="mx-auto w-full max-w-5xl px-6 py-20 md:px-10 md:py-24">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight md:text-4xl">
+      <section className="relative z-[2] overflow-hidden bg-[var(--landing-ink)] text-[var(--landing-mist)]">
+        <div
+          aria-hidden
+          className="absolute inset-y-0 right-0 w-1/3 bg-[linear-gradient(110deg,transparent,rgb(214_255_58_/_0.12))]"
+        />
+        <div className="relative mx-auto w-full max-w-5xl px-6 py-20 md:px-10 md:py-24">
+          <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight md:text-5xl">
             Built for the whole product org
           </h2>
-          <p className="mt-3 max-w-2xl text-[var(--landing-quiet)]">
+          <p className="mt-3 max-w-2xl text-[var(--landing-mist)]/70">
             Keep specialist workflows without losing the shared narrative.
           </p>
           <ul className="mt-12 grid sm:grid-cols-2">
@@ -202,12 +225,12 @@ export default async function HomePage() {
             ].map((item) => (
               <li
                 key={item.role}
-                className="border-t border-[var(--landing-line)] py-6 sm:pr-10"
+                className="border-t border-white/15 py-6 sm:pr-10"
               >
-                <p className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight">
+                <p className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--landing-signal)]">
                   {item.role}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--landing-quiet)]">
+                <p className="mt-2 text-sm leading-relaxed text-[var(--landing-mist)]/70">
                   {item.detail}
                 </p>
               </li>
@@ -242,7 +265,7 @@ export default async function HomePage() {
                   <span>{faq.question}</span>
                   <span
                     aria-hidden
-                    className="mt-0.5 text-[var(--landing-quiet)] transition group-open:rotate-45"
+                    className="mt-0.5 text-[var(--landing-signal-deep)] transition group-open:rotate-45"
                   >
                     +
                   </span>
@@ -256,20 +279,20 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="relative z-[2] border-t border-[var(--landing-line)] px-6 py-20 md:px-10 md:py-24">
+      <section className="relative z-[2] border-t border-[var(--landing-line)] bg-[var(--landing-signal)] px-6 py-20 md:px-10 md:py-24">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl">
-            <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight md:text-5xl">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-[var(--landing-ink)] md:text-5xl">
               Open the factory floor
             </h2>
-            <p className="mt-3 text-[var(--landing-quiet)]">
+            <p className="mt-3 text-[var(--landing-ink)]/75">
               Create a product, link your lifecycles, and put AI on the same
               board as your team.
             </p>
           </div>
           <Link
             href="/app"
-            className="inline-flex w-fit rounded-md bg-[var(--landing-ink)] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+            className="inline-flex w-fit rounded-md bg-[var(--landing-ink)] px-5 py-2.5 text-sm font-semibold text-[var(--landing-signal)] transition hover:brightness-110"
           >
             Enter Consol
           </Link>

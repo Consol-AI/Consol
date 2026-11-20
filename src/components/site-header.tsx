@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { AppViewer } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
 export function SiteHeader({
   viewer,
@@ -39,9 +38,7 @@ export function SiteHeader({
             </span>
             <Link
               href="/app"
-              className={cn(
-                "rounded-md bg-[var(--landing-ink)] px-3 py-1.5 text-[var(--landing-bg)] transition hover:opacity-90",
-              )}
+              className="rounded-md bg-[var(--landing-ink)] px-3 py-1.5 text-[var(--landing-signal)] transition hover:bg-[var(--landing-ink)]/90"
             >
               Workspace
             </Link>
@@ -49,7 +46,7 @@ export function SiteHeader({
         ) : (
           <Link
             href="/app"
-            className="rounded-md bg-[var(--landing-ink)] px-3 py-1.5 text-[var(--landing-bg)] transition hover:opacity-90"
+            className="rounded-md bg-[var(--landing-ink)] px-3 py-1.5 text-[var(--landing-signal)] transition hover:bg-[var(--landing-ink)]/90"
           >
             Open factory
           </Link>

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Manrope, Syne } from "next/font/google";
+import { Manrope, Space_Grotesk } from "next/font/google";
 import { getSiteUrl, siteConfig } from "@/lib/site";
 import "./globals.css";
 
-const display = Syne({
+const display = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: ["500", "600", "700"],
 });
 
 const sans = Manrope({

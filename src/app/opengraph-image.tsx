@@ -16,27 +16,37 @@ export default function Image() {
           justifyContent: "space-between",
           padding: "64px 72px",
           background:
-            "radial-gradient(ellipse at 12% 0%, rgba(15,118,110,0.10), transparent 50%), linear-gradient(180deg, #f7f8fa 0%, #f4f5f7 55%, #eef1f4 100%)",
-          color: "#111827",
+            "radial-gradient(ellipse at 0% 0%, rgba(214,255,58,0.4), transparent 50%), linear-gradient(160deg, #f4f7f2 0%, #e8eee9 50%, #dfe8e3 100%)",
+          color: "#0b1220",
           fontFamily: "ui-sans-serif, system-ui, sans-serif",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            fontSize: 76,
-            fontWeight: 700,
-            letterSpacing: "-0.045em",
-            lineHeight: 1,
-          }}
-        >
-          Consol
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 84,
+              fontWeight: 700,
+              letterSpacing: "-0.05em",
+              lineHeight: 1,
+            }}
+          >
+            Consol
+          </div>
+          <div
+            style={{
+              display: "flex",
+              width: 128,
+              height: 10,
+              background: "#d6ff3a",
+            }}
+          />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div
             style={{
               display: "flex",
-              fontSize: 38,
+              fontSize: 36,
               fontWeight: 600,
               letterSpacing: "-0.03em",
               lineHeight: 1.15,
@@ -49,12 +59,12 @@ export default function Image() {
             style={{
               display: "flex",
               fontSize: 22,
-              color: "#6b7280",
+              color: "#3f4f4a",
               maxWidth: 720,
               lineHeight: 1.35,
             }}
           >
-            Product, engineering, design, and data — sharing one board.
+            Product · Build · Design · Data — sharing one board.
           </div>
         </div>
       </div>
