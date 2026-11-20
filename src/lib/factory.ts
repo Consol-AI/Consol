@@ -103,6 +103,7 @@ export type WorkItem = {
 
 export type Message = {
   id: string;
+  organization_id: string | null;
   process_id: string | null;
   work_item_id: string | null;
   role: string;
@@ -110,6 +111,20 @@ export type Message = {
   author_sub: string | null;
   author_name: string;
   created_at: string;
+};
+
+/** Compact row for home-chat coordination context. */
+export type WorkspaceAttentionItem = {
+  id: string;
+  title: string;
+  status: string;
+  stage_name: string;
+  stage_type: string;
+  process_id: string;
+  process_name: string;
+  product_id: string;
+  product_name: string;
+  updated_at: string;
 };
 
 function slugify(input: string): string {
@@ -472,6 +487,7 @@ export async function updateWorkItem(input: {
 export async function listMessages(input: {
   workItemId?: string;
   processId?: string;
+  organizationId?: string;
 }): Promise<Message[]> {
   if (input.workItemId) {
     return sql<Message>(
@@ -485,10 +501,21 @@ export async function listMessages(input: {
       [input.processId],
     );
   }
+  if (input.organizationId) {
+    return sql<Message>(
+      `select * from messages
+       where organization_id = $1
+         and process_id is null
+         and work_item_id is null
+       order by created_at asc`,
+      [input.organizationId],
+    );
+  }
   return [];
 }
 
 export async function addMessage(input: {
+  organizationId?: string | null;
   processId?: string | null;
   workItemId?: string | null;
   role: "user" | "assistant" | "system";
@@ -498,10 +525,12 @@ export async function addMessage(input: {
 }): Promise<Message> {
   const id = createId("msg");
   await sql(
-    `insert into messages (id, process_id, work_item_id, role, content, author_sub, author_name)
-     values ($1, $2, $3, $4, $5, $6, $7)`,
+    `insert into messages (
+       id, organization_id, process_id, work_item_id, role, content, author_sub, author_name
+     ) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       id,
+      input.organizationId ?? null,
       input.processId ?? null,
       input.workItemId ?? null,
       input.role,
@@ -513,6 +542,68 @@ export async function addMessage(input: {
   return (
     await sql<Message>(`select * from messages where id = $1`, [id])
   )[0];
+}
+
+export async function listWorkspaceAttention(
+  organizationId: string,
+  limit = 24,
+): Promise<WorkspaceAttentionItem[]> {
+  return sql<WorkspaceAttentionItem>(
+    `select
+       wi.id,
+       wi.title,
+       wi.status,
+       s.name as stage_name,
+       coalesce(s.stage_type, 'legacy') as stage_type,
+       p.id as process_id,
+       p.name as process_name,
+       pr.id as product_id,
+       pr.name as product_name,
+       wi.updated_at
+     from work_items wi
+     join stages s on s.id = wi.stage_id
+     join processes p on p.id = wi.process_id
+     join products pr on pr.id = p.product_id
+     where pr.organization_id = $1
+       and wi.status <> 'done'
+     order by
+       case
+         when coalesce(s.stage_type, 'legacy') in ('human', 'legacy') then 0
+         when s.stage_type = 'agent' then 1
+         else 2
+       end,
+       wi.updated_at desc
+     limit $2`,
+    [organizationId, limit],
+  );
+}
+
+export async function buildWorkspaceBrief(organizationId: string): Promise<{
+  productCount: number;
+  products: { id: string; name: string; description: string }[];
+  attention: WorkspaceAttentionItem[];
+  needsYou: number;
+  agentsWorking: number;
+}> {
+  const products = await listProducts(organizationId);
+  const attention = await listWorkspaceAttention(organizationId);
+  const needsYou = attention.filter(
+    (item) => item.stage_type === "human" || item.stage_type === "legacy",
+  ).length;
+  const agentsWorking = attention.filter(
+    (item) => item.stage_type === "agent",
+  ).length;
+  return {
+    productCount: products.length,
+    products: products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+    })),
+    attention,
+    needsYou,
+    agentsWorking,
+  };
 }
 
 export async function assertOrgAccess(
