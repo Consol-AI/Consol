@@ -1,16 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Message } from "@/lib/factory";
+import { cn } from "@/lib/utils";
 
 type Props = {
   processId: string;
   workItemId?: string;
   initialMessages: Message[];
   title?: string;
+  /** When true, omit outer chrome (parent supplies header/surface). */
+  embedded?: boolean;
 };
 
 export function AiPanel({
@@ -18,6 +22,7 @@ export function AiPanel({
   workItemId,
   initialMessages,
   title = "AI collaborator",
+  embedded = false,
 }: Props) {
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
@@ -93,8 +98,11 @@ export function AiPanel({
           const { done, value } = await reader.read();
           if (done) break;
           text += decoder.decode(value, { stream: true });
+          const snapshot = text;
           setMessages((prev) =>
-            prev.map((m) => (m.id === streamId ? { ...m, content: text } : m)),
+            prev.map((m) =>
+              m.id === streamId ? { ...m, content: snapshot } : m,
+            ),
           );
         }
       } catch (err) {
@@ -108,38 +116,59 @@ export function AiPanel({
   }
 
   return (
-    <div className="flex h-full min-h-[28rem] flex-col border-l border-[var(--line)] bg-[var(--panel)]">
-      <div className="border-b border-[var(--line)] px-4 py-3">
-        <p className="font-[family-name:var(--font-display)] text-lg tracking-tight">
-          {title}
-        </p>
-        <p className="text-sm text-[var(--quiet)]">
-          Shared with your team — ask for next steps, briefs, or critiques.
-        </p>
-      </div>
+    <div
+      className={cn(
+        "flex h-full min-h-[28rem] flex-col",
+        !embedded &&
+          "overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]",
+      )}
+    >
+      {!embedded ? (
+        <div className="border-b border-[var(--console-line)] px-4 py-3">
+          <p className="text-[13px] font-semibold text-[var(--console-ink)]">
+            {title}
+          </p>
+          <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
+            Shared with your team — ask for next steps, briefs, or critiques.
+          </p>
+        </div>
+      ) : (
+        <div className="border-b border-[var(--console-line)] px-4 py-2.5">
+          <p className="text-[12px] text-[var(--console-muted)]">
+            Ask for next steps, briefs, or critiques on this process.
+          </p>
+        </div>
+      )}
       <ScrollArea className="flex-1 px-4 py-3">
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {messages.length === 0 ? (
-            <p className="text-sm text-[var(--quiet)]">
-              No messages yet. Ask Forge to draft a brief, challenge a
-              prioritization, or outline analysis questions.
-            </p>
+            <div className="rounded-lg border border-dashed border-[var(--console-line)] bg-[var(--console-panel)]/60 px-3 py-6 text-center">
+              <p className="text-[12px] text-[var(--console-muted)]">
+                No messages yet. Ask Forge to draft a brief, challenge a
+                prioritization, or outline analysis questions.
+              </p>
+            </div>
           ) : (
             messages.map((m) => (
               <div
                 key={m.id}
-                className={
+                className={cn(
+                  "rounded-lg px-3 py-2.5",
                   m.role === "assistant"
-                    ? "rounded-md bg-[var(--surface)] px-3 py-2"
-                    : "rounded-md px-1 py-1"
-                }
+                    ? "bg-[var(--console-accent-soft)] ring-1 ring-[var(--console-accent)]/10"
+                    : m.role === "system"
+                      ? "bg-[var(--console-panel)] text-[var(--console-muted)]"
+                      : "bg-white ring-1 ring-[var(--console-line)]",
+                )}
               >
-                <p className="mb-1 text-xs uppercase tracking-wide text-[var(--quiet)]">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--console-faint)]">
                   {m.role === "assistant"
                     ? "Forge AI"
-                    : m.author_name || "Teammate"}
+                    : m.role === "system"
+                      ? "Flow"
+                      : m.author_name || "Teammate"}
                 </p>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--console-ink)]">
                   {m.content}
                 </p>
               </div>
@@ -147,13 +176,17 @@ export function AiPanel({
           )}
         </div>
       </ScrollArea>
-      <div className="space-y-2 border-t border-[var(--line)] p-3">
-        {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      <div className="space-y-2 border-t border-[var(--console-line)] bg-white p-3">
+        {error ? (
+          <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-[12px] text-red-700">
+            {error}
+          </p>
+        ) : null}
         <Textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Ask about this work…"
-          className="min-h-20 resize-none bg-[var(--surface)]"
+          className="min-h-20 resize-none border-[var(--console-line)] bg-[var(--console-panel)]/40 text-[13px] shadow-none focus-visible:border-[var(--console-accent)] focus-visible:ring-[var(--console-accent-ring)]"
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
@@ -162,8 +195,21 @@ export function AiPanel({
           }}
         />
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-[var(--quiet)]">⌘/Ctrl + Enter</p>
-          <Button type="button" onClick={send} disabled={pending || !draft.trim()}>
+          <p className="text-[11px] text-[var(--console-faint)]">
+            ⌘/Ctrl + Enter
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={send}
+            disabled={pending || !draft.trim()}
+            className="h-8 gap-1.5 bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
+          >
+            {pending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Send className="size-3.5" />
+            )}
             {pending ? "Thinking…" : "Send"}
           </Button>
         </div>

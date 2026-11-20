@@ -1,4 +1,5 @@
 import type { TeammatePlaceHolder } from "@/components/workspace-dashboard";
+import { listAgents } from "@/lib/agents";
 import type { Member, Product } from "@/lib/factory";
 import type { TeammateRecord } from "@/lib/teammates/types";
 
@@ -52,20 +53,37 @@ export function buildPlaceholderTeammates(input: {
       ? []
       : seedPool.slice(0, Math.max(0, 3 - humans.length));
 
-  const agents: TeammatePlaceHolder[] = (input.agents ?? []).map((a) => ({
-    id: a.id,
-    name: a.name,
-    role: a.role,
-    kind: "agent" as const,
-    status:
-      a.status === "local"
-        ? ("ready" as const)
-        : a.status === "stopped"
-          ? ("idle" as const)
-          : ("ready" as const),
-    productIds,
-    slug: a.slug,
-  }));
+  const registered = input.agents ?? [];
+  const agents: TeammatePlaceHolder[] =
+    registered.length > 0
+      ? registered.map((a) => ({
+          id: a.id,
+          name: a.name,
+          role: a.role,
+          kind: "agent" as const,
+          status:
+            a.status === "local"
+              ? ("ready" as const)
+              : a.status === "stopped"
+                ? ("idle" as const)
+                : ("ready" as const),
+          productIds,
+          slug: a.slug,
+        }))
+      : listAgents().map((agent, index) => ({
+          id: `agent-${agent.key}`,
+          name: agent.name,
+          role: agent.role,
+          kind: "agent" as const,
+          status: (index === 1 ? "idle" : "ready") as "ready" | "idle",
+          productIds:
+            index === 0
+              ? productIds
+              : index === 1
+                ? ([first, third].filter(Boolean) as string[])
+                : ([second, first].filter(Boolean) as string[]),
+          slug: agent.key,
+        }));
 
   return [...humans, ...seedHumans, ...agents];
 }

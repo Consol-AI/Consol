@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
+import { getFlow } from "@/lib/flows";
+import {
+  advanceWorkItem,
+  type AdvanceOutcome,
+} from "@/lib/flows/runtime";
 import {
   addProcessFromTemplate,
   assertProductAccess,
@@ -11,6 +16,8 @@ import {
   ensureWorkspace,
   getProcess,
   getWorkItem,
+  isFlowBackedProcess,
+  listStageTransitions,
   listStages,
   moveWorkItem,
   updateWorkItem,
@@ -62,12 +69,18 @@ export async function createWorkItemAction(formData: FormData) {
   if (!product) throw new Error("Forbidden");
 
   const stages = await listStages(processId);
-  const stage = stages.find((s) => s.id === stageId) ?? stages[0];
-  if (!stage) throw new Error("No stages");
+  const flow = getFlow(process.template_key);
+  const entry =
+    (flow
+      ? stages.find((s) => s.stage_key === flow.entry)
+      : null) ??
+    stages.find((s) => s.id === stageId) ??
+    stages[0];
+  if (!entry) throw new Error("No stages");
 
   const item = await createWorkItem({
     processId,
-    stageId: stage.id,
+    stageId: entry.id,
     title,
     body,
     createdBy: viewer.sub,
@@ -87,8 +100,48 @@ export async function moveWorkItemAction(formData: FormData) {
   const product = await assertProductAccess(process.product_id, viewer.sub);
   if (!product) throw new Error("Forbidden");
 
+  if (isFlowBackedProcess(process)) {
+    const [stages, transitions] = await Promise.all([
+      listStages(process.id),
+      listStageTransitions(process.id),
+    ]);
+    const current = stages.find((s) => s.id === item.stage_id);
+    const target = stages.find((s) => s.id === stageId);
+    if (!current || !target) throw new Error("Invalid stage");
+    const allowed = transitions.some(
+      (t) =>
+        t.from_stage_key === (current.stage_key || current.id) &&
+        t.to_stage_key === (target.stage_key || target.id),
+    );
+    if (!allowed) {
+      throw new Error("Illegal transition for this flow");
+    }
+  }
+
   await moveWorkItem(itemId, stageId);
   revalidatePath(`/app/products/${product.id}/processes/${process.id}`);
+}
+
+export async function advanceWorkItemAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const itemId = String(formData.get("itemId") ?? "");
+  const outcome = String(formData.get("outcome") ?? "default") as AdvanceOutcome;
+  const execute = String(formData.get("execute") ?? "") === "1";
+  const item = await getWorkItem(itemId);
+  if (!item) throw new Error("Item not found");
+  const process = await getProcess(item.process_id);
+  if (!process) throw new Error("Process not found");
+  const product = await assertProductAccess(process.product_id, viewer.sub);
+  if (!product) throw new Error("Forbidden");
+
+  const result = await advanceWorkItem({
+    itemId,
+    outcome,
+    actorSub: viewer.sub,
+    execute,
+  });
+  revalidatePath(`/app/products/${product.id}/processes/${process.id}`);
+  return result;
 }
 
 export async function updateWorkItemAction(formData: FormData) {

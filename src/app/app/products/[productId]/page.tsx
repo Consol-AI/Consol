@@ -3,11 +3,8 @@ import { notFound } from "next/navigation";
 import { addProcessAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/lib/auth";
-import {
-  PROCESS_TEMPLATES,
-  assertProductAccess,
-  listProcesses,
-} from "@/lib/factory";
+import { listFlows } from "@/lib/flows";
+import { assertProductAccess, listProcesses } from "@/lib/factory";
 
 export default async function ProductPage({
   params,
@@ -82,36 +79,38 @@ export default async function ProductPage({
           </h2>
         </div>
         <ul className="divide-y divide-[var(--console-line)]">
-          {PROCESS_TEMPLATES.map((template) => (
-            <li key={template.key} className="px-4 py-4">
+          {listFlows().map((flow) => (
+            <li key={flow.key} className="px-4 py-4">
               <form
                 action={addProcessAction}
                 className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
               >
                 <input type="hidden" name="productId" value={product.id} />
-                <input type="hidden" name="templateKey" value={template.key} />
+                <input type="hidden" name="templateKey" value={flow.key} />
                 <div className="min-w-0">
                   <h3 className="text-[13px] font-medium text-[var(--console-ink)]">
-                    {template.name}
+                    {flow.name}
                   </h3>
                   <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
-                    {template.description}
+                    {flow.description}
                   </p>
                   <p className="mt-2 text-[11px] text-[var(--console-faint)]">
-                    {template.stages.map((s) => s.name).join(" → ")}
+                    {flow.stages
+                      .map((s) => `${s.name} (${s.type})`)
+                      .join(" → ")}
                   </p>
                 </div>
                 <Button
                   type="submit"
                   size="sm"
                   className={
-                    usedKeys.has(template.key)
+                    usedKeys.has(flow.key)
                       ? "h-8 shrink-0 rounded-md text-[12px]"
                       : "h-8 shrink-0 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
                   }
-                  variant={usedKeys.has(template.key) ? "outline" : "default"}
+                  variant={usedKeys.has(flow.key) ? "outline" : "default"}
                 >
-                  {usedKeys.has(template.key) ? "Add another" : "Add process"}
+                  {usedKeys.has(flow.key) ? "Add another" : "Add process"}
                 </Button>
               </form>
             </li>
