@@ -6,10 +6,11 @@ Consol is a **product factory** for cross-functional teams: shared product works
 
 1. Open the factory and land on **Home** — a Forge chat for coordinating tasks and decisions across the workspace.
 2. Open **Projects** to create a **product** and link teammates.
-3. Attach process flow templates (PM, software delivery, design, data analysis) — typed stages (`agent` / `human` / `script`) with transitions.
-4. Advance **work items** through the flow (run agents, approve human gates, run scripts).
-5. Chat with **Forge AI** on Home, a process, or a specific item.
-6. **Create teammate agents** (preset or blank) — each one is a Consol specialist and a deployable Agent SDK project under `agents/<slug>/`.
+3. Browse **Flows** to preview process templates (stages, owners, transitions) before attaching them.
+4. Attach process flow templates (PM, software delivery, design, data analysis) — typed stages (`agent` / `human` / `script`) with transitions.
+5. Advance **work items** through the flow (run agents, approve human gates, run scripts).
+6. Chat with **Forge AI** on Home, a process, or a specific item.
+7. **Create teammate agents** (preset or blank) — each one is a Consol specialist and a deployable Agent SDK project under `agents/<slug>/`.
 
 ## Run locally
 
