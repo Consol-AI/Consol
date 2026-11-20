@@ -97,25 +97,71 @@ export async function ensureWorkspace(viewer: {
   );
   if (clash[0]) slug = `${slug}-${orgId.slice(-6)}`;
 
-  await sql(
-    `insert into organizations (id, name, slug, created_by) values ($1, $2, $3, $4)`,
-    [orgId, baseName, slug, viewer.sub],
-  );
+  try {
+    await sql(
+      `insert into organizations (id, name, slug, created_by) values ($1, $2, $3, $4)`,
+      [orgId, baseName, slug, viewer.sub],
+    );
+  } catch {
+    // Concurrent first visits can race on slug; re-read membership workspace.
+    const raced = await sql<Organization>(
+      `select o.* from organizations o
+       join memberships m on m.organization_id = o.id
+       where m.user_sub = $1
+       order by o.created_at asc
+       limit 1`,
+      [viewer.sub],
+    );
+    if (raced[0]) return raced[0];
+    slug = `${slugify(baseName)}-${orgId.slice(-6)}`;
+    await sql(
+      `insert into organizations (id, name, slug, created_by) values ($1, $2, $3, $4)`,
+      [orgId, baseName, slug, viewer.sub],
+    );
+  }
   await sql(
     `insert into memberships (id, organization_id, user_sub, display_name, email, role)
-     values ($1, $2, $3, $4, $5, 'admin')`,
+     values ($1, $2, $3, $4, $5, 'admin')
+     on conflict (organization_id, user_sub) do nothing`,
     [createId("mem"), orgId, viewer.sub, viewer.name, viewer.email],
   );
 
   const org = (
     await sql<Organization>(`select * from organizations where id = $1`, [orgId])
   )[0];
-  return org;
+  if (org) return org;
+
+  const fallback = await sql<Organization>(
+    `select o.* from organizations o
+     join memberships m on m.organization_id = o.id
+     where m.user_sub = $1
+     order by o.created_at asc
+     limit 1`,
+    [viewer.sub],
+  );
+  return fallback[0]!;
 }
+
+export type Member = {
+  id: string;
+  organization_id: string;
+  user_sub: string;
+  display_name: string;
+  email: string;
+  role: string;
+  created_at: string;
+};
 
 export async function listProducts(organizationId: string): Promise<Product[]> {
   return sql<Product>(
     `select * from products where organization_id = $1 order by created_at desc`,
+    [organizationId],
+  );
+}
+
+export async function listMembers(organizationId: string): Promise<Member[]> {
+  return sql<Member>(
+    `select * from memberships where organization_id = $1 order by created_at asc`,
     [organizationId],
   );
 }
