@@ -10,9 +10,33 @@ if (url === "" || files.length === 0) {
   process.exit(0);
 }
 
-const client = new pg.Client({
-  connectionString: process.env.DATABASE_URL_UNPOOLED?.trim() || url,
-});
+const rawUrl = process.env.DATABASE_URL_UNPOOLED?.trim() || url;
+
+function pgConnection(connectionString) {
+  let relax = process.env.DATABASE_SSL === "0";
+  try {
+    const host = new URL(connectionString).hostname;
+    if (host.endsWith(".rlwy.net") || host.endsWith(".railway.app")) {
+      relax = true;
+    }
+  } catch {
+    // ignore
+  }
+  if (!relax) return { connectionString };
+  try {
+    const parsed = new URL(connectionString);
+    parsed.searchParams.delete("sslmode");
+    parsed.searchParams.delete("uselibpqcompat");
+    return {
+      connectionString: parsed.toString(),
+      ssl: { rejectUnauthorized: false },
+    };
+  } catch {
+    return { connectionString, ssl: { rejectUnauthorized: false } };
+  }
+}
+
+const client = new pg.Client(pgConnection(rawUrl));
 await client.connect();
 try {
   await client.query("set lock_timeout = '60s'");

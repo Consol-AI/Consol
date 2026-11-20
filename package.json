@@ -7,7 +7,9 @@
     "build": "next build && node scripts/migrate.mjs",
     "start": "next start",
     "lint": "eslint",
-    "agents:serve": "node scripts/agents-serve.mjs"
+    "agents:serve": "node scripts/agents-serve.mjs",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:railway-env": "node scripts/railway-db-env.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.121",
