@@ -21,6 +21,7 @@ import {
   updateWorkItemAction,
 } from "@/app/actions";
 import { AiPanel } from "@/components/ai-panel";
+import { DeliveryPoller } from "@/components/delivery-poller";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,8 @@ import type {
   StageTransition,
   WorkItem,
 } from "@/lib/factory";
+import type { AgentRun } from "@/lib/integrations/agent-runs-shared";
+import { isActiveAgentRunStatus } from "@/lib/integrations/agent-runs-shared";
 import type { WorkItemExternalLink } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +57,7 @@ type Props = {
   runEvents: StageRunEvent[];
   messages: Message[];
   externalLinks?: WorkItemExternalLink[];
+  agentRuns?: AgentRun[];
   returnView: ProcessViewMode;
 };
 
@@ -67,6 +71,7 @@ export function IssueFocus({
   runEvents,
   messages,
   externalLinks = [],
+  agentRuns = [],
   returnView,
 }: Props) {
   const router = useRouter();
@@ -84,6 +89,14 @@ export function IssueFocus({
   const ordered = [...stages].sort((a, b) => a.position - b.position);
   const current = ordered.find((s) => s.id === item.stage_id) ?? null;
   const currentMeta = stageMeta(current?.stage_type ?? "legacy");
+  const latestAgentRun = agentRuns[0] ?? null;
+  const pollActive =
+    item.status !== "done" &&
+    Boolean(
+      (latestAgentRun && isActiveAgentRunStatus(latestAgentRun.status)) ||
+        current?.stage_key === "build" ||
+        current?.stage_key === "validate",
+    );
   const backHref =
     returnView === "board"
       ? `/app/products/${productId}/processes/${processId}?view=board`
@@ -155,6 +168,7 @@ export function IssueFocus({
 
   return (
     <div className="space-y-5">
+      <DeliveryPoller workItemId={item.id} active={pollActive} />
       <div>
         <Link
           href={backHref}
@@ -365,16 +379,25 @@ export function IssueFocus({
                             >
                               {pending ? (
                                 <Loader2 className="size-3.5 animate-spin" />
-                              ) : stage.stage_key === "open-pr" ||
+                              ) : stage.stage_key === "build" ||
+                                stage.stage_key === "merge" ||
+                                String(config.path ?? "") === "cursor-build" ||
                                 String(config.path ?? "") === "open-pr" ? (
                                 <GitPullRequest className="size-3.5" />
                               ) : (
                                 <Terminal className="size-3.5" />
                               )}
-                              {stage.stage_key === "open-pr" ||
-                              String(config.path ?? "") === "open-pr"
-                                ? "Open pull request"
-                                : "Run script"}
+                              {stage.stage_key === "build" ||
+                              String(config.path ?? "") === "cursor-build"
+                                ? "Run Cursor build"
+                                : stage.stage_key === "validate"
+                                  ? "Run checks"
+                                  : stage.stage_key === "merge"
+                                    ? "Merge pull request"
+                                    : stage.stage_key === "open-pr" ||
+                                        String(config.path ?? "") === "open-pr"
+                                      ? "Open pull request"
+                                      : "Run script"}
                             </Button>
                           ) : null}
                           {flowBacked && stage.stage_type === "human"
@@ -433,6 +456,58 @@ export function IssueFocus({
               })}
             </ol>
           </section>
+
+          {latestAgentRun ? (
+            <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+              <header className="border-b border-[var(--console-line)] px-4 py-3">
+                <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+                  Cursor agent
+                </h2>
+                <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
+                  Cloud Agent run persisted for this delivery.
+                </p>
+              </header>
+              <div className="space-y-2 px-4 py-3 text-[12px]">
+                <p className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className="h-5 border-transparent bg-[var(--console-panel)] px-1.5 text-[10px]"
+                  >
+                    {latestAgentRun.status}
+                  </Badge>
+                  {latestAgentRun.agent_url ? (
+                    <a
+                      href={latestAgentRun.agent_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[var(--console-accent)] hover:underline"
+                    >
+                      Open in Cursor
+                      <ExternalLink className="size-3" />
+                    </a>
+                  ) : null}
+                </p>
+                {latestAgentRun.pr_url ? (
+                  <p className="truncate text-[var(--console-muted)]">
+                    PR:{" "}
+                    <a
+                      href={latestAgentRun.pr_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[var(--console-accent)] hover:underline"
+                    >
+                      {latestAgentRun.pr_url}
+                    </a>
+                  </p>
+                ) : null}
+                {latestAgentRun.result_summary ? (
+                  <p className="text-[var(--console-faint)]">
+                    {latestAgentRun.result_summary}
+                  </p>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
 
           {externalLinks.length > 0 ? (
             <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">

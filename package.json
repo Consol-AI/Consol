@@ -11,7 +11,8 @@
     "db:migrate": "node scripts/migrate.mjs",
     "db:railway-env": "node scripts/railway-db-env.mjs",
     "smoke:github": "tsx scripts/smoke-github-integration.ts",
-    "smoke:github-flow": "tsx scripts/smoke-github-flow.ts"
+    "smoke:github-flow": "tsx scripts/smoke-github-flow.ts",
+    "smoke:sdlc": "tsx scripts/smoke-sdlc-flow.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.121",

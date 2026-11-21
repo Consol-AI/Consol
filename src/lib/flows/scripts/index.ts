@@ -1,5 +1,8 @@
+import { runMergePullRequest } from "@/lib/flows/scripts/merge-pr";
 import { runOpenPullRequest } from "@/lib/flows/scripts/open-pr";
+import { runCursorBuild } from "@/lib/flows/scripts/run-cursor-build";
 import { runValidateEvidence } from "@/lib/flows/scripts/validate-evidence";
+import { runValidatePrChecks } from "@/lib/flows/scripts/validate-pr-checks";
 import { runVerifyDelivery } from "@/lib/flows/scripts/verify-delivery";
 import type { ScriptRunInput, ScriptRunResult } from "@/lib/flows/scripts/types";
 
@@ -10,6 +13,9 @@ const SCRIPT_RUNNERS: Record<
   "verify-delivery": runVerifyDelivery,
   "validate-evidence": runValidateEvidence,
   "open-pr": runOpenPullRequest,
+  "cursor-build": runCursorBuild,
+  "validate-pr-checks": runValidatePrChecks,
+  "merge-pr": runMergePullRequest,
 };
 
 function runInline(input: ScriptRunInput): ScriptRunResult {

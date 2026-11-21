@@ -1,10 +1,17 @@
 import Link from "next/link";
-import { Cable, GitPullRequest, MessageSquare, SquareKanban } from "lucide-react";
+import {
+  Bot,
+  Cable,
+  GitPullRequest,
+  MessageSquare,
+  SquareKanban,
+} from "lucide-react";
 import type { ConnectorDefinition } from "@/lib/integrations/catalog";
 import { cn } from "@/lib/utils";
 
 function connectorIcon(key: string) {
   if (key === "github") return GitPullRequest;
+  if (key === "cursor") return Bot;
   if (key === "linear") return SquareKanban;
   if (key === "slack") return MessageSquare;
   return Cable;
