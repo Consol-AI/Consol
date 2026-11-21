@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import { getIdentity } from "../../cursor/identity";
 
@@ -17,7 +18,8 @@ const DEMO_VIEWER: AppViewer = {
   demo: true,
 };
 
-export async function getViewer(): Promise<AppViewer | null> {
+/** Per-request memo so layout + page share one identity lookup. */
+export const getViewer = cache(async (): Promise<AppViewer | null> => {
   const h = await headers();
   const identity = await getIdentity(h);
   if (identity.verified && identity.kind === "person") {
@@ -36,7 +38,7 @@ export async function getViewer(): Promise<AppViewer | null> {
   }
 
   return null;
-}
+});
 
 export async function requireViewer(): Promise<AppViewer> {
   const viewer = await getViewer();
