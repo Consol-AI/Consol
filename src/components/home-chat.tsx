@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Message, WorkspaceAttentionItem } from "@/lib/factory";
+import { workItemHref } from "@/lib/work-links";
 import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
@@ -383,14 +384,14 @@ export function HomeChat({
                   return (
                     <li key={item.id}>
                       <Link
-                        href={`/app/products/${item.product_id}/processes/${item.process_id}?item=${item.id}`}
+                        href={workItemHref(item)}
                         className="block px-4 py-3 transition hover:bg-white/70"
                       >
                         <p className="truncate text-[12px] font-medium text-[var(--console-ink)]">
                           {item.title}
                         </p>
                         <p className="mt-0.5 truncate text-[11px] text-[var(--console-muted)]">
-                          {item.product_name} · {item.stage_name}
+                          {item.product_name ?? item.process_name} · {item.stage_name}
                         </p>
                         <p
                           className={cn(

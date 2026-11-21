@@ -48,7 +48,7 @@ import type { WorkItemExternalLink } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  productId: string;
+  productId?: string | null;
   processId: string;
   item: WorkItem;
   stages: Stage[];
@@ -58,7 +58,9 @@ type Props = {
   messages: Message[];
   externalLinks?: WorkItemExternalLink[];
   agentRuns?: AgentRun[];
-  returnView: ProcessViewMode;
+  returnView?: ProcessViewMode;
+  backHref?: string;
+  flowInputs?: { key: string; label: string }[];
 };
 
 export function IssueFocus({
@@ -72,7 +74,9 @@ export function IssueFocus({
   messages,
   externalLinks = [],
   agentRuns = [],
-  returnView,
+  returnView = "list",
+  backHref: backHrefProp,
+  flowInputs = [],
 }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(item.title);
@@ -98,9 +102,23 @@ export function IssueFocus({
         current?.stage_key === "validate",
     );
   const backHref =
-    returnView === "board"
-      ? `/app/products/${productId}/processes/${processId}?view=board`
-      : `/app/products/${productId}/processes/${processId}`;
+    backHrefProp ??
+    (productId
+      ? returnView === "board"
+        ? `/app/products/${productId}/processes/${processId}?view=board`
+        : `/app/products/${productId}/processes/${processId}`
+      : "/app/work");
+  const inputEntries = flowInputs.length
+    ? flowInputs
+        .map((field) => ({
+          label: field.label,
+          value: (item.inputs?.[field.key] ?? "").trim(),
+        }))
+        .filter((entry) => entry.value)
+    : Object.entries(item.inputs ?? {}).map(([key, value]) => ({
+        label: key,
+        value: value.trim(),
+      })).filter((entry) => entry.value);
 
   function save() {
     setError(null);
@@ -175,11 +193,13 @@ export function IssueFocus({
           className="inline-flex items-center gap-1.5 text-[12px] text-[var(--console-faint)] transition hover:text-[var(--console-accent)]"
         >
           <ArrowLeft className="size-3" />
-          Back to {returnView === "board" ? "board" : "list"}
+          {backHrefProp
+            ? "Back to Work"
+            : `Back to ${returnView === "board" ? "board" : "list"}`}
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--console-faint)]">
-            Issue
+            {productId ? "Issue" : "Work"}
           </p>
           <Badge
             variant="outline"
@@ -210,6 +230,20 @@ export function IssueFocus({
         <p className="mt-1 text-[13px] text-[var(--console-muted)]">
           Updated {formatRelativeTime(item.updated_at)}
         </p>
+        {inputEntries.length ? (
+          <dl className="mt-4 grid gap-2 rounded-xl bg-[var(--console-panel)] p-3.5 ring-1 ring-[var(--console-line)] sm:grid-cols-2">
+            {inputEntries.map((entry) => (
+              <div key={entry.label} className="min-w-0">
+                <dt className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--console-faint)]">
+                  {entry.label}
+                </dt>
+                <dd className="mt-0.5 whitespace-pre-wrap text-[12px] text-[var(--console-ink)]">
+                  {entry.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
       </div>
 
       {error || notice ? (

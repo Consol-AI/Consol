@@ -87,6 +87,7 @@ export async function runAgentStage(input: {
     allowedTools: allowedTools.length ? allowedTools : undefined,
     workItemTitle: input.item.title,
     workItemBody: input.item.body,
+    workItemInputs: input.item.inputs,
     stageName: input.stage.name,
   });
 
@@ -146,6 +147,7 @@ export async function runScriptStage(input: {
     inline,
     title: input.item.title,
     body: input.item.body,
+    inputs: input.item.inputs,
     stageKey: input.stage.stage_key || input.stage.id,
     productId: input.productId,
     processId: input.item.process_id,
@@ -215,7 +217,7 @@ export async function advanceWorkItem(input: {
         item: (await getWorkItem(item.id))!,
         stage,
         actorSub: input.actorSub,
-        productId: process.product_id,
+        productId: process.product_id ?? undefined,
       });
       summary = scriptResult.summary;
       outcome = scriptResult.outcome;

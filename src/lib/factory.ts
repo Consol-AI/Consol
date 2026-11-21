@@ -26,7 +26,8 @@ export type Product = {
 
 export type Process = {
   id: string;
-  product_id: string;
+  product_id: string | null;
+  organization_id: string;
   name: string;
   domain: string;
   template_key: string;
@@ -96,6 +97,7 @@ export type WorkItem = {
   stage_id: string;
   title: string;
   body: string;
+  inputs: Record<string, string>;
   status: string;
   assignee_sub: string | null;
   created_by: string;
@@ -115,7 +117,7 @@ export type Message = {
   created_at: string;
 };
 
-/** Compact row for home-chat coordination context. */
+/** Compact row for home-chat / Work coordination context. */
 export type WorkspaceAttentionItem = {
   id: string;
   title: string;
@@ -124,10 +126,35 @@ export type WorkspaceAttentionItem = {
   stage_type: string;
   process_id: string;
   process_name: string;
-  product_id: string;
-  product_name: string;
+  template_key: string;
+  product_id: string | null;
+  product_name: string | null;
   updated_at: string;
 };
+
+export type OrganizationWorkItem = WorkspaceAttentionItem & {
+  inputs: Record<string, string>;
+};
+
+function parseWorkItemInputs(raw: unknown): Record<string, string> {
+  if (!raw) return {};
+  const value =
+    typeof raw === "string"
+      ? (JSON.parse(raw) as Record<string, unknown>)
+      : (raw as Record<string, unknown>);
+  const inputs: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value ?? {})) {
+    if (typeof entry === "string") inputs[key] = entry;
+  }
+  return inputs;
+}
+
+function normalizeWorkItem(row: WorkItem): WorkItem {
+  return {
+    ...row,
+    inputs: parseWorkItemInputs(row.inputs),
+  };
+}
 
 function slugify(input: string): string {
   return (
@@ -301,26 +328,32 @@ export async function addProcessFromTemplate(input: {
 }): Promise<Process> {
   const flow = getFlow(input.templateKey);
   if (!flow) throw new Error("Unknown template");
+  const product = await getProduct(input.productId);
+  if (!product) throw new Error("Product not found");
   return addProcessFromFlow({
     productId: input.productId,
+    organizationId: product.organization_id,
     flow,
     createdBy: input.createdBy,
   });
 }
 
 export async function addProcessFromFlow(input: {
-  productId: string;
+  productId: string | null;
+  organizationId: string;
   flow: FlowDefinition;
   createdBy: string;
 }): Promise<Process> {
   const { flow } = input;
   const processId = createId("prc");
   await sql(
-    `insert into processes (id, product_id, name, domain, template_key, created_by)
-     values ($1, $2, $3, $4, $5, $6)`,
+    `insert into processes (
+       id, product_id, organization_id, name, domain, template_key, created_by
+     ) values ($1, $2, $3, $4, $5, $6, $7)`,
     [
       processId,
       input.productId,
+      input.organizationId,
       flow.name,
       flow.domain,
       flow.key,
@@ -445,18 +478,18 @@ export function isFlowBackedProcess(process: Process): boolean {
 export { listFlows };
 
 export async function listWorkItems(processId: string): Promise<WorkItem[]> {
-  return sql<WorkItem>(
+  const rows = await sql<WorkItem>(
     `select * from work_items where process_id = $1 order by updated_at desc`,
     [processId],
   );
+  return rows.map(normalizeWorkItem);
 }
 
 export async function getWorkItem(itemId: string): Promise<WorkItem | null> {
-  return (
-    (
-      await sql<WorkItem>(`select * from work_items where id = $1`, [itemId])
-    )[0] ?? null
-  );
+  const row = (
+    await sql<WorkItem>(`select * from work_items where id = $1`, [itemId])
+  )[0];
+  return row ? normalizeWorkItem(row) : null;
 }
 
 export async function createWorkItem(input: {
@@ -465,17 +498,21 @@ export async function createWorkItem(input: {
   title: string;
   body: string;
   createdBy: string;
+  inputs?: Record<string, string>;
 }): Promise<WorkItem> {
   const id = createId("wit");
+  const inputs = input.inputs ?? {};
   await sql(
-    `insert into work_items (id, process_id, stage_id, title, body, created_by)
-     values ($1, $2, $3, $4, $5, $6)`,
+    `insert into work_items (
+       id, process_id, stage_id, title, body, inputs, created_by
+     ) values ($1, $2, $3, $4, $5, $6::jsonb, $7)`,
     [
       id,
       input.processId,
       input.stageId,
       input.title.trim(),
       input.body.trim(),
+      JSON.stringify(inputs),
       input.createdBy,
     ],
   );
@@ -578,14 +615,15 @@ export async function listWorkspaceAttention(
        coalesce(s.stage_type, 'legacy') as stage_type,
        p.id as process_id,
        p.name as process_name,
+       coalesce(p.template_key, '') as template_key,
        pr.id as product_id,
        pr.name as product_name,
        wi.updated_at
      from work_items wi
      join stages s on s.id = wi.stage_id
      join processes p on p.id = wi.process_id
-     join products pr on pr.id = p.product_id
-     where pr.organization_id = $1
+     left join products pr on pr.id = p.product_id
+     where p.organization_id = $1
        and wi.status <> 'done'
      order by
        case
@@ -597,6 +635,74 @@ export async function listWorkspaceAttention(
      limit $2`,
     [organizationId, limit],
   );
+}
+
+export async function listOrganizationWorkItems(
+  organizationId: string,
+  limit = 100,
+): Promise<OrganizationWorkItem[]> {
+  const rows = await sql<OrganizationWorkItem & { inputs: unknown }>(
+    `select
+       wi.id,
+       wi.title,
+       wi.status,
+       wi.inputs,
+       s.name as stage_name,
+       coalesce(s.stage_type, 'legacy') as stage_type,
+       p.id as process_id,
+       p.name as process_name,
+       coalesce(p.template_key, '') as template_key,
+       pr.id as product_id,
+       pr.name as product_name,
+       wi.updated_at
+     from work_items wi
+     join stages s on s.id = wi.stage_id
+     join processes p on p.id = wi.process_id
+     left join products pr on pr.id = p.product_id
+     where p.organization_id = $1
+       and wi.status <> 'done'
+     order by
+       case
+         when coalesce(s.stage_type, 'legacy') in ('human', 'legacy') then 0
+         when s.stage_type = 'agent' then 1
+         else 2
+       end,
+       wi.updated_at desc
+     limit $2`,
+    [organizationId, limit],
+  );
+  return rows.map((row) => ({
+    ...row,
+    inputs: parseWorkItemInputs(row.inputs),
+  }));
+}
+
+export async function ensureOrgProcess(input: {
+  organizationId: string;
+  templateKey: string;
+  createdBy: string;
+}): Promise<Process> {
+  const flow = getFlow(input.templateKey);
+  if (!flow) throw new Error("Unknown template");
+
+  const existing = (
+    await sql<Process>(
+      `select * from processes
+       where organization_id = $1
+         and template_key = $2
+         and product_id is null
+       limit 1`,
+      [input.organizationId, input.templateKey],
+    )
+  )[0];
+  if (existing) return existing;
+
+  return addProcessFromFlow({
+    productId: null,
+    organizationId: input.organizationId,
+    flow,
+    createdBy: input.createdBy,
+  });
 }
 
 export async function buildWorkspaceBrief(organizationId: string): Promise<{
@@ -655,5 +761,24 @@ export async function assertProductAccess(
   const ok = await assertOrgAccess(product.organization_id, userSub);
   return ok ? product : null;
 }
+
+export async function assertProcessAccess(
+  processId: string,
+  userSub: string,
+): Promise<Process | null> {
+  const process = await getProcess(processId);
+  if (!process) return null;
+  if (process.organization_id) {
+    const ok = await assertOrgAccess(process.organization_id, userSub);
+    return ok ? process : null;
+  }
+  if (process.product_id) {
+    const product = await assertProductAccess(process.product_id, userSub);
+    return product ? process : null;
+  }
+  return null;
+}
+
+export { workItemHref } from "@/lib/work-links";
 
 export { PROCESS_TEMPLATES };

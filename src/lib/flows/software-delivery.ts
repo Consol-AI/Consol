@@ -7,6 +7,36 @@ export const softwareDeliveryFlow: FlowDefinition = {
   description:
     "Spec, approve, Cursor Cloud Agent build, validate checks, approve, and merge — with reject loops back to build.",
   entry: "spec",
+  inputs: [
+    {
+      key: "title",
+      label: "Title",
+      type: "string",
+      required: true,
+      placeholder: "What are we shipping?",
+    },
+    {
+      key: "goal",
+      label: "Goal",
+      type: "text",
+      required: true,
+      placeholder: "User-facing outcome and why it matters",
+    },
+    {
+      key: "repo_context",
+      label: "Repo / area",
+      type: "string",
+      required: false,
+      placeholder: "owner/repo or package path",
+    },
+    {
+      key: "acceptance",
+      label: "Acceptance notes",
+      type: "text",
+      required: true,
+      placeholder: "How we know this is done",
+    },
+  ],
   stages: [
     {
       id: "spec",

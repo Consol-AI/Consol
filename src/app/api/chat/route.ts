@@ -9,7 +9,7 @@ import { parseDeliveryIntent, startSoftwareDelivery } from "@/lib/delivery/start
 import {
   addMessage,
   assertOrgAccess,
-  assertProductAccess,
+  assertProcessAccess,
   buildWorkspaceBrief,
   getProcess,
   getWorkItem,
@@ -63,24 +63,22 @@ export async function POST(request: Request) {
   if (workItemId) {
     const item = await getWorkItem(workItemId);
     if (!item) return Response.json({ error: "item not found" }, { status: 404 });
-    const process = await getProcess(item.process_id);
-    if (!process) {
-      return Response.json({ error: "process not found" }, { status: 404 });
-    }
-    const product = await assertProductAccess(process.product_id, viewer.sub);
-    if (!product) return Response.json({ error: "forbidden" }, { status: 403 });
+    const process = await assertProcessAccess(item.process_id, viewer.sub);
+    if (!process) return Response.json({ error: "forbidden" }, { status: 403 });
     processId = process.id;
-    organizationId = product.organization_id;
+    organizationId = process.organization_id;
     contextLabel = `${item.title} (${process.name})`;
     stageNames = (await listStages(process.id)).map((s) => s.name);
   } else if (processId) {
-    const process = await getProcess(processId);
+    const process = await assertProcessAccess(processId, viewer.sub);
     if (!process) {
-      return Response.json({ error: "process not found" }, { status: 404 });
+      const missing = await getProcess(processId);
+      if (!missing) {
+        return Response.json({ error: "process not found" }, { status: 404 });
+      }
+      return Response.json({ error: "forbidden" }, { status: 403 });
     }
-    const product = await assertProductAccess(process.product_id, viewer.sub);
-    if (!product) return Response.json({ error: "forbidden" }, { status: 403 });
-    organizationId = product.organization_id;
+    organizationId = process.organization_id;
     contextLabel = process.name;
     stageNames = (await listStages(process.id)).map((s) => s.name);
   } else if (organizationId) {

@@ -105,17 +105,21 @@ export async function pollAgentRun(
       summary: "Process missing",
     };
   }
-  const product = await getProduct(process.product_id);
-  if (!product) {
+  const product = process.product_id
+    ? await getProduct(process.product_id)
+    : null;
+  const organizationId =
+    product?.organization_id ?? process.organization_id ?? null;
+  if (!organizationId) {
     return {
       run,
       changed: false,
       advanced: false,
-      summary: "Product missing",
+      summary: "Organization missing",
     };
   }
 
-  const apiKey = (await getCursorApiKey(product.organization_id)) ?? "";
+  const apiKey = (await getCursorApiKey(organizationId)) ?? "";
   let remote;
   try {
     remote = await getCursorRun({

@@ -14,8 +14,8 @@ export function FlowCatalog({ flows }: { flows: FlowDefinition[] }) {
             Flows
           </h1>
           <p className="mt-1 max-w-xl text-[13px] text-[var(--console-muted)]">
-            Preview process templates before attaching them to a product —
-            stages, owners, and transition outcomes.
+            Preview process templates — stages, owners, inputs, and
+            transitions. Start one from Work, or attach it to a product.
           </p>
         </div>
       </header>

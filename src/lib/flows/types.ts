@@ -40,6 +40,16 @@ export type TransitionEdge = {
   when?: string;
 };
 
+export type FlowInputField = {
+  key: string;
+  label: string;
+  description?: string;
+  type: "string" | "text" | "url" | "select";
+  required?: boolean;
+  placeholder?: string;
+  options?: { value: string; label: string }[];
+};
+
 export type FlowDefinition = {
   key: string;
   name: string;
@@ -48,6 +58,7 @@ export type FlowDefinition = {
   entry: string;
   stages: FlowStage[];
   transitions: Record<string, string | TransitionEdge[]>;
+  inputs: FlowInputField[];
 };
 
 export type NormalizedTransition = {
@@ -68,4 +79,45 @@ export function normalizeTransitions(
     next: edge.next,
     when: edge.when?.trim() || "default",
   }));
+}
+
+export function formatFlowInputsBlock(
+  inputs: Record<string, string>,
+  fields: FlowInputField[],
+): string {
+  const lines: string[] = [];
+  for (const field of fields) {
+    const value = (inputs[field.key] ?? "").trim();
+    if (!value) continue;
+    lines.push(`- **${field.label}**: ${value}`);
+  }
+  for (const [key, raw] of Object.entries(inputs)) {
+    if (fields.some((field) => field.key === key)) continue;
+    const value = raw.trim();
+    if (!value) continue;
+    lines.push(`- **${key}**: ${value}`);
+  }
+  if (!lines.length) return "";
+  return ["### Inputs", ...lines].join("\n");
+}
+
+export function validateFlowInputs(
+  fields: FlowInputField[],
+  values: Record<string, string>,
+): { ok: true; inputs: Record<string, string> } | { ok: false; error: string } {
+  const inputs: Record<string, string> = {};
+  for (const field of fields) {
+    const value = (values[field.key] ?? "").trim();
+    if (field.required !== false && !value) {
+      return { ok: false, error: `${field.label} is required` };
+    }
+    if (field.type === "select" && value && field.options?.length) {
+      const allowed = field.options.some((option) => option.value === value);
+      if (!allowed) {
+        return { ok: false, error: `${field.label} has an invalid value` };
+      }
+    }
+    if (value) inputs[field.key] = value;
+  }
+  return { ok: true, inputs };
 }

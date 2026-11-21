@@ -72,7 +72,7 @@ export function formatWorkspaceBriefForPrompt(brief: {
     stage_name: string;
     stage_type: string;
     process_name: string;
-    product_name: string;
+    product_name: string | null;
   }[];
   needsYou: number;
   agentsWorking: number;
@@ -100,7 +100,7 @@ export function formatWorkspaceBriefForPrompt(brief: {
                 : item.stage_type === "agent"
                   ? "agents working"
                   : "waiting";
-            return `- [${bucket}] ${item.title} · ${item.product_name} / ${item.process_name} · ${item.stage_name}`;
+            return `- [${bucket}] ${item.title} · ${item.product_name ?? item.process_name} / ${item.process_name} · ${item.stage_name}`;
           })
           .join("\n");
 

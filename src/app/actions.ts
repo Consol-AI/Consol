@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
-import { getFlow } from "@/lib/flows";
+import {
+  formatFlowInputsBlock,
+  getFlow,
+  validateFlowInputs,
+} from "@/lib/flows";
 import {
   advanceWorkItem,
   type AdvanceOutcome,
@@ -11,9 +15,11 @@ import {
 import {
   addProcessFromTemplate,
   assertOrgAccess,
+  assertProcessAccess,
   assertProductAccess,
   createProduct,
   createWorkItem,
+  ensureOrgProcess,
   ensureWorkspace,
   getProcess,
   getWorkItem,
@@ -23,6 +29,7 @@ import {
   moveWorkItem,
   updateWorkItem,
 } from "@/lib/factory";
+import { workItemHref } from "@/lib/work-links";
 import {
   clearProductIntegration,
   upsertGithubIntegration,
@@ -36,6 +43,20 @@ import {
   githubOAuthConfigured,
   revokeGithubToken,
 } from "@/lib/integrations/github/oauth";
+
+function revalidateWorkPaths(input: {
+  processId: string;
+  productId?: string | null;
+  itemId?: string;
+}) {
+  revalidatePath("/app/work");
+  if (input.itemId) revalidatePath(`/app/work/${input.itemId}`);
+  if (input.productId) {
+    revalidatePath(
+      `/app/products/${input.productId}/processes/${input.processId}`,
+    );
+  }
+}
 
 export async function createProductAction(formData: FormData) {
   const viewer = await requireViewer();
@@ -77,10 +98,8 @@ export async function createWorkItemAction(formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   if (!title) throw new Error("Title is required");
 
-  const process = await getProcess(processId);
-  if (!process) throw new Error("Process not found");
-  const product = await assertProductAccess(process.product_id, viewer.sub);
-  if (!product) throw new Error("Forbidden");
+  const process = await assertProcessAccess(processId, viewer.sub);
+  if (!process) throw new Error("Forbidden");
 
   const stages = await listStages(processId);
   const flow = getFlow(process.template_key);
@@ -99,8 +118,72 @@ export async function createWorkItemAction(formData: FormData) {
     body,
     createdBy: viewer.sub,
   });
-  revalidatePath(`/app/products/${product.id}/processes/${processId}`);
+  revalidateWorkPaths({
+    processId,
+    productId: process.product_id,
+    itemId: item.id,
+  });
   return item.id;
+}
+
+export type StartWorkFlowState = {
+  error?: string;
+};
+
+export async function startWorkFlowAction(
+  _prev: StartWorkFlowState,
+  formData: FormData,
+): Promise<StartWorkFlowState> {
+  const viewer = await requireViewer();
+  const org = await ensureWorkspace(viewer);
+  if (!(await assertOrgAccess(org.id, viewer.sub))) {
+    return { error: "Forbidden" };
+  }
+
+  const flowKey = String(formData.get("flowKey") ?? "").trim();
+  const flow = getFlow(flowKey);
+  if (!flow) return { error: "Unknown flow" };
+
+  const rawInputs: Record<string, string> = {};
+  for (const field of flow.inputs) {
+    rawInputs[field.key] = String(formData.get(`input:${field.key}`) ?? "");
+  }
+  const validated = validateFlowInputs(flow.inputs, rawInputs);
+  if (!validated.ok) return { error: validated.error };
+
+  const title =
+    validated.inputs.title?.trim() ||
+    validated.inputs.goal?.trim() ||
+    validated.inputs.opportunity?.trim() ||
+    flow.name;
+  const inputsBlock = formatFlowInputsBlock(validated.inputs, flow.inputs);
+  const body = inputsBlock;
+
+  const process = await ensureOrgProcess({
+    organizationId: org.id,
+    templateKey: flow.key,
+    createdBy: viewer.sub,
+  });
+  const stages = await listStages(process.id);
+  const entry =
+    stages.find((s) => s.stage_key === flow.entry) ?? stages[0];
+  if (!entry) return { error: "Flow has no entry stage" };
+
+  const item = await createWorkItem({
+    processId: process.id,
+    stageId: entry.id,
+    title,
+    body,
+    inputs: validated.inputs,
+    createdBy: viewer.sub,
+  });
+
+  revalidateWorkPaths({
+    processId: process.id,
+    productId: null,
+    itemId: item.id,
+  });
+  redirect(workItemHref({ id: item.id, process_id: process.id, product_id: null }));
 }
 
 export async function moveWorkItemAction(formData: FormData) {
@@ -109,10 +192,8 @@ export async function moveWorkItemAction(formData: FormData) {
   const stageId = String(formData.get("stageId") ?? "");
   const item = await getWorkItem(itemId);
   if (!item) throw new Error("Item not found");
-  const process = await getProcess(item.process_id);
-  if (!process) throw new Error("Process not found");
-  const product = await assertProductAccess(process.product_id, viewer.sub);
-  if (!product) throw new Error("Forbidden");
+  const process = await assertProcessAccess(item.process_id, viewer.sub);
+  if (!process) throw new Error("Forbidden");
 
   if (isFlowBackedProcess(process)) {
     const [stages, transitions] = await Promise.all([
@@ -133,7 +214,11 @@ export async function moveWorkItemAction(formData: FormData) {
   }
 
   await moveWorkItem(itemId, stageId);
-  revalidatePath(`/app/products/${product.id}/processes/${process.id}`);
+  revalidateWorkPaths({
+    processId: process.id,
+    productId: process.product_id,
+    itemId,
+  });
 }
 
 export async function advanceWorkItemAction(formData: FormData) {
@@ -143,10 +228,8 @@ export async function advanceWorkItemAction(formData: FormData) {
   const execute = String(formData.get("execute") ?? "") === "1";
   const item = await getWorkItem(itemId);
   if (!item) throw new Error("Item not found");
-  const process = await getProcess(item.process_id);
-  if (!process) throw new Error("Process not found");
-  const product = await assertProductAccess(process.product_id, viewer.sub);
-  if (!product) throw new Error("Forbidden");
+  const process = await assertProcessAccess(item.process_id, viewer.sub);
+  if (!process) throw new Error("Forbidden");
 
   const result = await advanceWorkItem({
     itemId,
@@ -154,7 +237,11 @@ export async function advanceWorkItemAction(formData: FormData) {
     actorSub: viewer.sub,
     execute,
   });
-  revalidatePath(`/app/products/${product.id}/processes/${process.id}`);
+  revalidateWorkPaths({
+    processId: process.id,
+    productId: process.product_id,
+    itemId,
+  });
   return result;
 }
 
@@ -165,13 +252,15 @@ export async function updateWorkItemAction(formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   const item = await getWorkItem(itemId);
   if (!item) throw new Error("Item not found");
-  const process = await getProcess(item.process_id);
-  if (!process) throw new Error("Process not found");
-  const product = await assertProductAccess(process.product_id, viewer.sub);
-  if (!product) throw new Error("Forbidden");
+  const process = await assertProcessAccess(item.process_id, viewer.sub);
+  if (!process) throw new Error("Forbidden");
 
   await updateWorkItem({ itemId, title, body });
-  revalidatePath(`/app/products/${product.id}/processes/${process.id}`);
+  revalidateWorkPaths({
+    processId: process.id,
+    productId: process.product_id,
+    itemId,
+  });
 }
 
 export async function saveGithubIntegrationAction(formData: FormData) {
