@@ -5,7 +5,7 @@ export const softwareDeliveryFlow: FlowDefinition = {
   name: "Software delivery",
   domain: "engineering",
   description:
-    "Directed graph from spec through build, open PR, review, test, and ship — with reject and test-failure loops.",
+    "Spec, approve, Cursor Cloud Agent build, validate checks, approve, and merge — with reject loops back to build.",
   entry: "spec",
   stages: [
     {
@@ -19,64 +19,64 @@ export const softwareDeliveryFlow: FlowDefinition = {
       allowedTools: ["read_work_item", "update_brief", "list_stages"],
     },
     {
+      id: "spec-approve",
+      type: "human",
+      name: "Approve spec",
+      description: "Human gate before coding starts.",
+      responsible: "Product / engineering lead",
+      approves: "Spec is clear enough to build",
+    },
+    {
       id: "build",
-      type: "agent",
+      type: "script",
       name: "Build",
-      description: "Implementation in progress.",
-      agentKey: "forge",
-      rolePrompt:
-        "You are the Build agent. Turn the approved spec into an implementation plan and concrete change list. Call out files, risks, and verification steps.",
-      allowedTools: ["read_work_item", "update_brief", "list_stages"],
+      description: "Cursor Cloud Agent implements the change and opens a PR.",
+      path: "cursor-build",
     },
     {
-      id: "open-pr",
+      id: "validate",
       type: "script",
-      name: "Open PR",
-      description: "Open a draft GitHub pull request for review.",
-      path: "open-pr",
+      name: "Validate",
+      description: "GitHub Checks on the pull request head.",
+      path: "validate-pr-checks",
     },
     {
-      id: "review",
+      id: "ship-approve",
       type: "human",
-      name: "Review",
-      description: "Code and design review.",
-      responsible: "Engineering reviewer",
-      approves: "Design and implementation are ready for test",
-    },
-    {
-      id: "test",
-      type: "script",
-      name: "Test",
-      description: "QA, verification, and hardening.",
-      path: "verify-delivery",
-    },
-    {
-      id: "ship",
-      type: "human",
-      name: "Ship",
-      description: "Release and monitor.",
+      name: "Approve ship",
+      description: "Final human gate before merge.",
       responsible: "Release owner",
-      approves: "Ready to release to production",
+      approves: "Ready to merge the pull request",
+    },
+    {
+      id: "merge",
+      type: "script",
+      name: "Merge",
+      description: "Merge the linked GitHub pull request.",
+      path: "merge-pr",
     },
   ],
   transitions: {
-    spec: "build",
-    build: "open-pr",
-    "open-pr": [
-      { next: "review", when: "success" },
+    spec: "spec-approve",
+    "spec-approve": [
+      { next: "build", when: "approve" },
+      { next: "spec", when: "reject" },
+    ],
+    build: [
+      { next: "validate", when: "success" },
       { next: "build", when: "failure" },
     ],
-    review: [
-      { next: "test", when: "approve" },
+    validate: [
+      { next: "ship-approve", when: "success" },
+      { next: "build", when: "failure" },
+    ],
+    "ship-approve": [
+      { next: "merge", when: "approve" },
       { next: "build", when: "reject" },
     ],
-    test: [
-      { next: "ship", when: "success" },
-      { next: "build", when: "failure" },
-    ],
-    ship: [
-      { next: "done", when: "approve" },
-      { next: "review", when: "reject" },
+    merge: [
+      { next: "done", when: "success" },
+      { next: "ship-approve", when: "failure" },
     ],
   },
 };

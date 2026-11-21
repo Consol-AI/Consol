@@ -29,7 +29,14 @@ export function attentionBucketForItem(
   if (!stage) return "waiting";
   if (stage.stage_type === "human") return "needs_you";
   if (stage.stage_type === "agent") return "agents_working";
-  if (stage.stage_type === "script") return "waiting";
+  if (stage.stage_type === "script") {
+    const key = stage.stage_key || "";
+    // Cursor build / CI validate count as agent work in the attention rail.
+    if (key === "build" || key === "validate" || key === "cursor-build") {
+      return "agents_working";
+    }
+    return "waiting";
+  }
   // Legacy free-move stages still need a human to nudge them.
   if (stage.stage_type === "legacy" || !stage.stage_type) return "needs_you";
   return "waiting";

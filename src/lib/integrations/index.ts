@@ -18,12 +18,20 @@ export type {
 } from "@/lib/integrations/types";
 export {
   createGithubPullRequest,
+  getGithubCheckSummary,
+  getGithubPullRequest,
+  getGithubPullRequestFromUrl,
   githubAuthConfigured,
   githubHeadBranchName,
+  mergeGithubPullRequest,
+  parseGithubPrUrl,
 } from "@/lib/integrations/github/client";
 export type {
   CreateGithubPullRequestInput,
+  GithubCheckSummary,
   GithubPullRequest,
+  GithubPullRequestDetails,
+  MergeGithubPullRequestResult,
 } from "@/lib/integrations/github/client";
 export {
   getConnector,
@@ -49,3 +57,26 @@ export {
   githubOAuthConfigured,
   GITHUB_OAUTH_SCOPES,
 } from "@/lib/integrations/github/oauth";
+export {
+  createAgentRun,
+  getAgentRun,
+  listActiveAgentRuns,
+  listAgentRunsForWorkItem,
+  updateAgentRun,
+  isActiveAgentRunStatus,
+} from "@/lib/integrations/agent-runs";
+export type { AgentRun } from "@/lib/integrations/agent-runs";
+export {
+  createCursorAgent,
+  cursorDryRunMode,
+  cursorEnvApiKey,
+  getCursorAgent,
+  getCursorRun,
+} from "@/lib/integrations/cursor/client";
+export {
+  clearCursorApiKey,
+  cursorConnectionConfigured,
+  getCursorApiKey,
+  getPublicCursorConnection,
+  saveCursorApiKey,
+} from "@/lib/integrations/cursor/credentials";

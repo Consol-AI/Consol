@@ -17,9 +17,9 @@ import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
   "What needs my decision today?",
+  "Ship a feature on LeagueSports: add a subtle footer changelog link",
   "Summarize open work across projects",
   "Help me prioritize what to ship next",
-  "Draft a brief for a new initiative",
 ] as const;
 
 type Props = {
@@ -45,8 +45,20 @@ export function HomeChat({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [deliveryConfirm, setDeliveryConfirm] = useState<{
+    title: string;
+    body: string;
+  } | null>(null);
+  const [lastDeliveryHref, setLastDeliveryHref] = useState<string | null>(null);
 
-  function send(contentOverride?: string) {
+  function send(
+    contentOverride?: string,
+    options?: {
+      confirmDelivery?: boolean;
+      deliveryTitle?: string;
+      deliveryBody?: string;
+    },
+  ) {
     const content = (contentOverride ?? draft).trim();
     if (!content || pending) return;
     setError(null);
@@ -69,7 +81,13 @@ export function HomeChat({
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message: content, organizationId }),
+          body: JSON.stringify({
+            message: content,
+            organizationId,
+            confirmDelivery: options?.confirmDelivery,
+            deliveryTitle: options?.deliveryTitle,
+            deliveryBody: options?.deliveryBody,
+          }),
         });
         if (!res.ok) {
           const detail = await res.text().catch(() => "");
@@ -77,7 +95,27 @@ export function HomeChat({
         }
         const contentType = res.headers.get("content-type") ?? "";
         if (contentType.includes("application/json")) {
-          const data = (await res.json()) as { reply: string };
+          const data = (await res.json()) as {
+            reply: string;
+            delivery?: {
+              started?: boolean;
+              needsConfirm?: boolean;
+              href?: string;
+              title?: string;
+              body?: string;
+            };
+          };
+          if (data.delivery?.needsConfirm && data.delivery.title) {
+            setDeliveryConfirm({
+              title: data.delivery.title,
+              body: data.delivery.body || content,
+            });
+          } else {
+            setDeliveryConfirm(null);
+          }
+          if (data.delivery?.started && data.delivery.href) {
+            setLastDeliveryHref(data.delivery.href);
+          }
           setMessages((prev) => [
             ...prev,
             {
@@ -232,6 +270,49 @@ export function HomeChat({
               {error ? (
                 <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-[12px] text-red-700">
                   {error}
+                </p>
+              ) : null}
+              {deliveryConfirm ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--console-accent-soft)] px-2.5 py-2 text-[12px] text-[var(--console-accent)]">
+                  <span className="min-w-0 flex-1">
+                    Start delivery for <strong>{deliveryConfirm.title}</strong>?
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7"
+                    disabled={pending}
+                    onClick={() =>
+                      send(`Start software delivery: ${deliveryConfirm.title}`, {
+                        confirmDelivery: true,
+                        deliveryTitle: deliveryConfirm.title,
+                        deliveryBody: deliveryConfirm.body,
+                      })
+                    }
+                  >
+                    Confirm start
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7"
+                    disabled={pending}
+                    onClick={() => setDeliveryConfirm(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              ) : null}
+              {lastDeliveryHref ? (
+                <p className="text-[12px] text-[var(--console-muted)]">
+                  Latest delivery:{" "}
+                  <Link
+                    href={lastDeliveryHref}
+                    className="font-medium text-[var(--console-accent)] hover:underline"
+                  >
+                    Open work item
+                  </Link>
                 </p>
               ) : null}
               <Textarea

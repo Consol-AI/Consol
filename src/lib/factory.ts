@@ -61,6 +61,7 @@ export type StageRunEvent = {
   stage_type: string;
   outcome: string;
   summary: string;
+  metadata?: Record<string, unknown> | string;
   created_by: string;
   created_at: string;
 };
@@ -390,13 +391,14 @@ export async function addStageRunEvent(input: {
   outcome: string;
   summary: string;
   createdBy: string;
+  metadata?: Record<string, unknown>;
 }): Promise<StageRunEvent> {
   const id = createId("sre");
   await sql(
     `insert into stage_run_events (
        id, work_item_id, process_id, stage_key, stage_type,
-       outcome, summary, created_by
-     ) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       outcome, summary, created_by, metadata
+     ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
     [
       id,
       input.workItemId,
@@ -406,6 +408,7 @@ export async function addStageRunEvent(input: {
       input.outcome,
       input.summary,
       input.createdBy,
+      JSON.stringify(input.metadata ?? {}),
     ],
   );
   return (
@@ -608,9 +611,17 @@ export async function buildWorkspaceBrief(organizationId: string): Promise<{
   const needsYou = attention.filter(
     (item) => item.stage_type === "human" || item.stage_type === "legacy",
   ).length;
-  const agentsWorking = attention.filter(
-    (item) => item.stage_type === "agent",
-  ).length;
+  const agentsWorking = attention.filter((item) => {
+    if (item.stage_type === "agent") return true;
+    if (item.stage_type !== "script") return false;
+    const name = (item.stage_name || "").toLowerCase();
+    return (
+      name === "build" ||
+      name === "validate" ||
+      name.includes("cursor") ||
+      name.includes("check")
+    );
+  }).length;
   return {
     productCount: products.length,
     products: products.map((p) => ({

@@ -18,7 +18,11 @@ export const metadata: Metadata = {
     "Bring product, engineering, design, and data lifecycles into one shared AI workspace.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"

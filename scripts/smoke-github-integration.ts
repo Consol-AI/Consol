@@ -114,22 +114,31 @@ async function main() {
   }
   console.log("ok: upsertGithubIntegration", config);
 
-  const process = await addProcessFromTemplate({
+  const deliveryProcess = await addProcessFromTemplate({
     productId,
     templateKey: "software-delivery",
     createdBy: "smoke",
   });
-  const stages = await listStages(process.id);
-  const openPr = stages.find((s) => s.stage_key === "open-pr");
-  if (!openPr) throw new Error("software-delivery missing open-pr stage");
-  console.log(
-    "ok: software-delivery stages",
-    stages.map((s) => s.stage_key).join(" → "),
-  );
+  const stages = await listStages(deliveryProcess.id);
+  const build = stages.find((s) => s.stage_key === "build");
+  if (!build) throw new Error("software-delivery missing build stage");
+  const expected = [
+    "spec",
+    "spec-approve",
+    "build",
+    "validate",
+    "ship-approve",
+    "merge",
+  ];
+  const got = stages.map((s) => s.stage_key);
+  if (JSON.stringify(got) !== JSON.stringify(expected)) {
+    throw new Error(`Unexpected stages: ${got.join(" → ")}`);
+  }
+  console.log("ok: software-delivery stages", got.join(" → "));
 
   const item = await createWorkItem({
-    processId: process.id,
-    stageId: openPr.id,
+    processId: deliveryProcess.id,
+    stageId: build.id,
     title: "Ship GitHub open PR",
     body: "Acceptance criteria: open a draft PR.\nImplementation plan: change files.",
     createdBy: "smoke",
@@ -140,7 +149,7 @@ async function main() {
     body: item.body,
     stageKey: "open-pr",
     productId,
-    processId: process.id,
+    processId: deliveryProcess.id,
     workItemId: item.id,
     actorSub: "smoke",
   });
@@ -149,6 +158,7 @@ async function main() {
   }
   console.log("ok: runOpenPullRequest", result.summary);
   console.log("smoke: all checks passed");
+  process.exit(0);
 }
 
 main().catch((error) => {
