@@ -1,4 +1,4 @@
-import type { FlowDefinition, FlowStage } from "@/lib/flows/types";
+import type { FlowDefinition, FlowInputField, FlowStage } from "@/lib/flows/types";
 
 /** Wrap a linear stage list as agent stages with simple forward transitions. */
 export function linearFlow(input: {
@@ -7,6 +7,7 @@ export function linearFlow(input: {
   domain: string;
   description: string;
   stages: { id: string; name: string; description: string }[];
+  inputs?: FlowInputField[];
 }): FlowDefinition {
   const stages: FlowStage[] = input.stages.map((stage) => ({
     id: stage.id,
@@ -33,6 +34,22 @@ export function linearFlow(input: {
     entry: input.stages[0]!.id,
     stages,
     transitions,
+    inputs: input.inputs ?? [
+      {
+        key: "title",
+        label: "Title",
+        type: "string",
+        required: true,
+        placeholder: "What should this flow deliver?",
+      },
+      {
+        key: "brief",
+        label: "Brief",
+        type: "text",
+        required: true,
+        placeholder: "Context, constraints, and desired outcome",
+      },
+    ],
   };
 }
 
@@ -41,6 +58,36 @@ export const designFlow = linearFlow({
   name: "Design",
   domain: "design",
   description: "Brief, explore, critique, refine, and hand off.",
+  inputs: [
+    {
+      key: "title",
+      label: "Title",
+      type: "string",
+      required: true,
+      placeholder: "What are we designing?",
+    },
+    {
+      key: "audience",
+      label: "Audience",
+      type: "string",
+      required: true,
+      placeholder: "Who is this for?",
+    },
+    {
+      key: "constraints",
+      label: "Constraints",
+      type: "text",
+      required: true,
+      placeholder: "Brand, platform, timeline, must-haves",
+    },
+    {
+      key: "success",
+      label: "Success look like",
+      type: "text",
+      required: false,
+      placeholder: "What good handoff means",
+    },
+  ],
   stages: [
     { id: "brief", name: "Brief", description: "Goals, constraints, and audience." },
     { id: "explore", name: "Explore", description: "Directions and concepts." },
@@ -55,6 +102,36 @@ export const dataAnalysisFlow = linearFlow({
   name: "Data analysis",
   domain: "data",
   description: "Frame a question, gather data, analyze, and decide.",
+  inputs: [
+    {
+      key: "title",
+      label: "Title",
+      type: "string",
+      required: true,
+      placeholder: "Name this analysis",
+    },
+    {
+      key: "question",
+      label: "Decision question",
+      type: "text",
+      required: true,
+      placeholder: "What decision needs evidence?",
+    },
+    {
+      key: "data_sources",
+      label: "Data sources",
+      type: "text",
+      required: true,
+      placeholder: "Tables, dashboards, exports to use",
+    },
+    {
+      key: "timeframe",
+      label: "Timeframe",
+      type: "string",
+      required: false,
+      placeholder: "e.g. last 90 days",
+    },
+  ],
   stages: [
     { id: "question", name: "Question", description: "What decision needs evidence?" },
     { id: "gather", name: "Gather", description: "Sources, extracts, and cleaning." },

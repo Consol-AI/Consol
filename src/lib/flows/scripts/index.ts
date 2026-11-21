@@ -40,6 +40,7 @@ export async function runFlowScript(input: {
   inline?: string;
   title: string;
   body: string;
+  inputs?: Record<string, string>;
   stageKey: string;
   productId?: string;
   processId?: string;
@@ -49,6 +50,7 @@ export async function runFlowScript(input: {
   const payload: ScriptRunInput = {
     title: input.title,
     body: input.body,
+    inputs: input.inputs,
     stageKey: input.stageKey,
     inline: input.inline,
     productId: input.productId,

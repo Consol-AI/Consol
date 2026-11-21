@@ -19,6 +19,8 @@ export type AgentInvokeInput = {
   allowedTools?: AgentToolName[];
   workItemTitle: string;
   workItemBody: string;
+  /** Structured start-form context from the work item. */
+  workItemInputs?: Record<string, string>;
   stageName: string;
   userHint?: string;
 };

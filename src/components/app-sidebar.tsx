@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Cable, FolderKanban, GitBranch, Home, Users } from "lucide-react";
+import {
+  Briefcase,
+  Cable,
+  FolderKanban,
+  GitBranch,
+  Home,
+  Users,
+} from "lucide-react";
 import { NavPending } from "@/components/nav-pending";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +20,7 @@ const NAV: {
   exact?: boolean;
 }[] = [
   { href: "/app", label: "Home", icon: Home, exact: true },
+  { href: "/app/work", label: "Work", icon: Briefcase },
   { href: "/app/projects", label: "Projects", icon: FolderKanban },
   { href: "/app/flows", label: "Flows", icon: GitBranch },
   { href: "/app/connectors", label: "Connectors", icon: Cable },

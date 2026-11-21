@@ -21,6 +21,7 @@ export function listFlows(): FlowDefinition[] {
 export type {
   AgentStage,
   FlowDefinition,
+  FlowInputField,
   FlowStage,
   HumanStage,
   NormalizedTransition,
@@ -28,4 +29,8 @@ export type {
   StageType,
   TransitionEdge,
 } from "@/lib/flows/types";
-export { normalizeTransitions } from "@/lib/flows/types";
+export {
+  formatFlowInputsBlock,
+  normalizeTransitions,
+  validateFlowInputs,
+} from "@/lib/flows/types";

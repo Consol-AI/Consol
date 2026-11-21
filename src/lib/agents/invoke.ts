@@ -9,17 +9,27 @@ import { getLanguageModel, hasAiKey } from "@/lib/ai";
 import { getTeammateBySlug } from "@/lib/teammates/registry";
 import { runTeammateTurn } from "@/lib/teammates/runtime";
 
+function formatInputsForPrompt(inputs?: Record<string, string>): string {
+  if (!inputs) return "";
+  const lines = Object.entries(inputs)
+    .filter(([, value]) => value.trim())
+    .map(([key, value]) => `- ${key}: ${value.trim()}`);
+  return lines.length ? `Inputs:\n${lines.join("\n")}` : "";
+}
+
 function mockAgentReply(input: AgentInvokeInput, tools: AgentToolName[]): string {
   const toolsLine = tools.length
     ? `Tools considered: ${tools.join(", ")}.`
     : "No tools configured.";
+  const inputsLine = formatInputsForPrompt(input.workItemInputs);
   return [
     `## ${input.stageName} — agent draft`,
     "",
     `Work item: **${input.workItemTitle}**`,
-    input.workItemBody.trim()
-      ? `Context: ${input.workItemBody.trim().slice(0, 280)}`
-      : "Context: (empty brief)",
+    inputsLine ||
+      (input.workItemBody.trim()
+        ? `Context: ${input.workItemBody.trim().slice(0, 280)}`
+        : "Context: (empty brief)"),
     "",
     "Proposed next steps:",
     "1. Restate the outcome for this stage in one sentence.",
@@ -42,6 +52,7 @@ export async function invokeAgent(
       rolePrompt ? `Stage role prompt:\n${rolePrompt}` : "",
       `Stage: ${input.stageName}`,
       `Title: ${input.workItemTitle}`,
+      formatInputsForPrompt(input.workItemInputs),
       `Brief:\n${input.workItemBody || "(none)"}`,
       input.userHint ? `Hint: ${input.userHint}` : "",
       input.allowedTools?.length
@@ -82,6 +93,7 @@ export async function invokeAgent(
   const userPrompt = [
     `Stage: ${input.stageName}`,
     `Title: ${input.workItemTitle}`,
+    formatInputsForPrompt(input.workItemInputs),
     `Brief:\n${input.workItemBody || "(none)"}`,
     input.userHint ? `Hint: ${input.userHint}` : "",
     `Allowed tools: ${allowedTools.join(", ") || "none"}`,

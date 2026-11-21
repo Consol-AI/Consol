@@ -7,6 +7,36 @@ export const productManagementFlow: FlowDefinition = {
   description:
     "Discover opportunities, define bets, prioritize, validate, and launch — with human gates and research agents.",
   entry: "discover",
+  inputs: [
+    {
+      key: "title",
+      label: "Title",
+      type: "string",
+      required: true,
+      placeholder: "Name this bet or opportunity",
+    },
+    {
+      key: "opportunity",
+      label: "Opportunity",
+      type: "text",
+      required: true,
+      placeholder: "Problem or insight to explore",
+    },
+    {
+      key: "audience",
+      label: "Audience",
+      type: "string",
+      required: true,
+      placeholder: "Who feels this pain?",
+    },
+    {
+      key: "success_metric",
+      label: "Success metric",
+      type: "string",
+      required: true,
+      placeholder: "How we measure success",
+    },
+  ],
   stages: [
     {
       id: "discover",
