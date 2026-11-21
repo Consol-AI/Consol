@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Cable, FolderKanban, GitBranch, Home, Users } from "lucide-react";
+import { NavPending } from "@/components/nav-pending";
 import { cn } from "@/lib/utils";
 
 const NAV: {
@@ -82,6 +83,7 @@ export function AppSidebar({
                 aria-hidden
               />
               {item.label}
+              <NavPending />
             </Link>
           );
         })}

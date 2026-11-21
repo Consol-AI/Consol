@@ -9,7 +9,8 @@ export async function probeTeammateRuntime(
   teammate: TeammateRecord,
 ): Promise<boolean> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 800);
+  // Keep this short: probes run on navigation into a teammate chat.
+  const timer = setTimeout(() => controller.abort(), 250);
   try {
     const res = await fetch(`${teammateServeUrl(teammate)}/v1/info`, {
       signal: controller.signal,

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { sql } from "@/lib/db";
 import { getFlow, listFlows } from "@/lib/flows";
 import { parseStageConfig } from "@/lib/flows/stage-config";
@@ -137,7 +138,7 @@ function slugify(input: string): string {
   );
 }
 
-export async function ensureWorkspace(viewer: {
+async function ensureWorkspaceUncached(viewer: {
   sub: string;
   name: string;
   email: string;
@@ -206,6 +207,23 @@ export async function ensureWorkspace(viewer: {
     [viewer.sub],
   );
   return fallback[0]!;
+}
+
+/**
+ * Per-request memo keyed by identity fields so layout + page share one DB hit.
+ * Primitive args keep React `cache` identity stable across call sites.
+ */
+const ensureWorkspaceByIdentity = cache(
+  async (sub: string, name: string, email: string): Promise<Organization> =>
+    ensureWorkspaceUncached({ sub, name, email }),
+);
+
+export async function ensureWorkspace(viewer: {
+  sub: string;
+  name: string;
+  email: string;
+}): Promise<Organization> {
+  return ensureWorkspaceByIdentity(viewer.sub, viewer.name, viewer.email);
 }
 
 export type Member = {
