@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FactoryEnterLink } from "@/components/factory-enter-link";
+import { LiveDot } from "@/components/live-dot";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from "@/lib/utils";
 import { site } from "@/lib/site";
@@ -329,15 +330,6 @@ function SectionTitle({
     >
       {children}
     </h2>
-  );
-}
-
-function LiveDot({ className }: { className?: string }) {
-  return (
-    <span className={cn("relative flex size-2", className)}>
-      <span className="absolute inline-flex size-full animate-ping rounded-full bg-current opacity-60" />
-      <span className="relative inline-flex size-2 rounded-full bg-current" />
-    </span>
   );
 }
 

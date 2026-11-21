@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-mark";
 import { FactoryEnterLink } from "@/components/factory-enter-link";
 
 const NAV = [
@@ -18,12 +19,7 @@ export function SiteHeader() {
           aria-label="Consol home"
           className="flex items-center gap-2 text-[17px] font-semibold tracking-tight"
         >
-          <span
-            aria-hidden
-            className="grid size-6 place-items-center rounded-md bg-gradient-to-br from-indigo-400 to-violet-600 shadow-[0_0_16px_rgb(129_140_248/0.5)]"
-          >
-            <span className="size-2 rounded-[3px] bg-white" />
-          </span>
+          <BrandMark glow />
           Consol
         </Link>
         <nav

@@ -186,7 +186,7 @@ export function TeammateChat({
             <Button
               type="button"
               size="sm"
-              className="h-8 rounded-md bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+              className="h-8 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
               disabled={pending || !draft.trim()}
               onClick={() => send()}
             >

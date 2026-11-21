@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-mark";
 
 export function AppMobileBar({
   orgName,
@@ -10,9 +11,7 @@ export function AppMobileBar({
   return (
     <div className="flex items-center justify-between bg-[var(--console-sidebar)] px-4 py-3 ring-1 ring-[var(--console-line)] md:hidden">
       <div className="flex items-center gap-2.5">
-        <span className="flex size-7 items-center justify-center rounded-md bg-[var(--console-ink)] text-[11px] font-semibold text-white">
-          C
-        </span>
+        <BrandMark className="size-7" />
         <div>
           <Link
             href="/app"

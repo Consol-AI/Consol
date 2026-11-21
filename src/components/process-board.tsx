@@ -120,7 +120,7 @@ export function ProcessBoard({
                             {done ? (
                               <Badge
                                 variant="outline"
-                                className="h-5 shrink-0 gap-1 border-transparent bg-emerald-50 px-1.5 text-[10px] text-emerald-700"
+                                className="h-5 shrink-0 gap-1 border-transparent bg-[var(--console-accent-soft)] px-1.5 text-[10px] text-[var(--console-accent)]"
                               >
                                 <CheckCircle2 className="size-3" />
                                 Done

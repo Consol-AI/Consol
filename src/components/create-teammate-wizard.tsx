@@ -202,7 +202,7 @@ export function CreateTeammateWizard() {
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-md bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+                className="h-8 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
                 disabled={!name.trim() || !slug.trim()}
                 onClick={() => setStep("role")}
               >
@@ -261,7 +261,7 @@ export function CreateTeammateWizard() {
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-md bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+                className="h-8 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
                 disabled={!brief.trim() || !modelId.trim() || !role.trim()}
                 onClick={() => setStep("confirm")}
               >

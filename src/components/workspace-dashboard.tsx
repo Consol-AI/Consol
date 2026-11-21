@@ -43,11 +43,11 @@ function statusDot(status: TeammatePlaceHolder["status"]) {
   switch (status) {
     case "online":
     case "ready":
-      return "bg-emerald-500";
+      return "bg-indigo-500";
     case "busy":
       return "bg-amber-500";
     case "away":
-      return "bg-sky-500";
+      return "bg-zinc-400";
     default:
       return "bg-zinc-300";
   }
@@ -183,7 +183,7 @@ export function WorkspaceDashboard({
                     <Button
                       type="submit"
                       size="sm"
-                      className="h-8 rounded-md bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+                      className="h-8 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
                     >
                       Create
                     </Button>
@@ -377,7 +377,7 @@ export function WorkspaceDashboard({
                   <Link href="/app/teammates/new" className="mt-3 inline-block">
                     <Button
                       size="sm"
-                      className="h-8 rounded-md bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+                      className="h-8 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
                     >
                       Create teammate
                     </Button>
@@ -441,7 +441,7 @@ export function WorkspaceDashboard({
                               "rounded px-1 py-px text-[10px] font-medium capitalize",
                               teammate.kind === "agent"
                                 ? "bg-[var(--console-agent)] text-[var(--console-accent)]"
-                                : "bg-[var(--console-panel)] text-[var(--console-muted)]",
+                                : "bg-amber-50 text-amber-700",
                             )}
                           >
                             {teammate.kind}
