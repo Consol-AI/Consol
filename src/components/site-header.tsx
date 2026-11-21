@@ -1,44 +1,45 @@
 import Link from "next/link";
 import { FactoryEnterLink } from "@/components/factory-enter-link";
-import type { AppViewer } from "@/lib/auth";
 
-export function SiteHeader({
-  viewer,
-  compact = false,
-}: {
-  viewer?: AppViewer | null;
-  compact?: boolean;
-}) {
+const NAV = [
+  { href: "#work", label: "Work in progress" },
+  { href: "#features", label: "Features" },
+  { href: "#history", label: "History" },
+  { href: "#faq", label: "FAQ" },
+];
+
+/** Marketing header for the public landing page. */
+export function SiteHeader() {
   return (
-    <header
-      className={
-        compact
-          ? "flex items-center justify-between border-b border-[var(--line)] px-4 py-3 md:px-6"
-          : "absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 py-5 md:px-10"
-      }
-    >
-      <Link
-        href={viewer ? "/app" : "/"}
-        className="font-[family-name:var(--font-display)] text-2xl tracking-tight md:text-3xl"
-      >
-        Consol
-      </Link>
-      <nav className="flex items-center gap-3 text-sm">
-        {viewer ? (
-          <>
-            <span className="hidden text-[var(--quiet)] sm:inline">
-              {viewer.demo ? `${viewer.name} (demo)` : viewer.name}
-            </span>
-            <FactoryEnterLink className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-[var(--paper)]">
-              Workspace
-            </FactoryEnterLink>
-          </>
-        ) : (
-          <FactoryEnterLink className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-[var(--paper)]">
-            Open factory
-          </FactoryEnterLink>
-        )}
-      </nav>
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.08] bg-zinc-950/70 text-white backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6 px-6 md:px-10">
+        <Link
+          href="/"
+          aria-label="Consol home"
+          className="flex items-center gap-2 text-[17px] font-semibold tracking-tight"
+        >
+          <span
+            aria-hidden
+            className="grid size-6 place-items-center rounded-md bg-gradient-to-br from-indigo-400 to-violet-600 shadow-[0_0_16px_rgb(129_140_248/0.5)]"
+          >
+            <span className="size-2 rounded-[3px] bg-white" />
+          </span>
+          Consol
+        </Link>
+        <nav
+          aria-label="Primary"
+          className="hidden items-center gap-7 text-sm text-zinc-400 md:flex"
+        >
+          {NAV.map((item) => (
+            <a key={item.href} href={item.href} className="transition hover:text-white">
+              {item.label}
+            </a>
+          ))}
+        </nav>
+        <FactoryEnterLink className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-zinc-950 transition hover:bg-zinc-200">
+          Open workspace
+        </FactoryEnterLink>
+      </div>
     </header>
   );
 }
