@@ -42,8 +42,8 @@ import type {
   StageTransition,
   WorkItem,
 } from "@/lib/factory";
-import type { AgentRun } from "@/lib/integrations/agent-runs";
-import { isActiveAgentRunStatus } from "@/lib/integrations/agent-runs";
+import type { AgentRun } from "@/lib/integrations/agent-runs-shared";
+import { isActiveAgentRunStatus } from "@/lib/integrations/agent-runs-shared";
 import type { WorkItemExternalLink } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 

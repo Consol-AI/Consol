@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Bot, CheckCircle2, Circle, GitPullRequest, Loader2 } from "lucide-react";
-import type { AgentRun } from "@/lib/integrations/agent-runs";
+import type { AgentRun } from "@/lib/integrations/agent-runs-shared";
 import type { Stage, StageRunEvent, WorkItem } from "@/lib/factory";
 import type { WorkItemExternalLink } from "@/lib/integrations/types";
 import { cn } from "@/lib/utils";

@@ -63,9 +63,12 @@ export {
   listActiveAgentRuns,
   listAgentRunsForWorkItem,
   updateAgentRun,
-  isActiveAgentRunStatus,
 } from "@/lib/integrations/agent-runs";
-export type { AgentRun } from "@/lib/integrations/agent-runs";
+export {
+  isActiveAgentRunStatus,
+  agentRunMetadata,
+} from "@/lib/integrations/agent-runs-shared";
+export type { AgentRun } from "@/lib/integrations/agent-runs-shared";
 export {
   createCursorAgent,
   cursorDryRunMode,
