@@ -8,9 +8,10 @@ Consol is a **product factory** for cross-functional teams: shared product works
 2. Open **Projects** to create a **product** and link teammates.
 3. Browse **Flows** to preview process templates (stages, owners, transitions) before attaching them.
 4. Attach process flow templates (PM, software delivery, design, data analysis) — typed stages (`agent` / `human` / `script`) with transitions.
-5. Advance **work items** through the flow (run agents, approve human gates, run scripts).
-6. Chat with **Forge AI** on Home, a process, or a specific item.
-7. **Create teammate agents** (preset or blank) — each one is a Consol specialist and a deployable Agent SDK project under `agents/<slug>/`.
+5. Open **Connectors** to link external systems (GitHub first) to products.
+6. Advance **work items** through the flow (run agents, open PRs, approve human gates, run scripts).
+7. Chat with **Forge AI** on Home, a process, or a specific item.
+8. **Create teammate agents** (preset or blank) — each one is a Consol specialist and a deployable Agent SDK project under `agents/<slug>/`.
 
 ## Run locally
 
@@ -75,6 +76,21 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 | `DATABASE_SSL` | Set `0` to accept Railway’s self-signed public proxy cert |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway key for live model replies |
 | `OPENAI_API_KEY` | Alternate live model key if Gateway is unset |
+| `GITHUB_CLIENT_ID` | GitHub OAuth App client id |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret |
+| `GITHUB_OAUTH_REDIRECT_URI` | Optional callback URL override |
+| `CONNECTOR_TOKEN_SECRET` | Encrypts stored OAuth tokens (optional; falls back to client secret) |
+| `CONSOL_GITHUB_DRY_RUN` | Force dry-run PR opens (`1`) even when OAuth is connected |
+
+### GitHub
+
+1. Create a GitHub OAuth App with callback  
+   `http://127.0.0.1:43123/api/connectors/github/oauth/callback`  
+   and set `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
+2. Open **Connectors** → **GitHub** → **Connect with GitHub** (workspace OAuth — no product required).
+3. Optionally link a default repository to a product on the same page.
+4. Attach **Software delivery** and run **Open pull request** on a work item.
+5. Without an OAuth connection, Consol records a dry-run PR link.
 
 Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `cursor-app.json` declares a Postgres database. For Railway testing, prefer `npm run db:railway-env`.
 

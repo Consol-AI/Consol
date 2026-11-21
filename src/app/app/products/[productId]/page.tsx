@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Cable, GitPullRequest } from "lucide-react";
 import { addProcessAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/lib/auth";
 import { listFlows } from "@/lib/flows";
 import { assertProductAccess, listProcesses } from "@/lib/factory";
+import {
+  getProductIntegration,
+  parseGithubConfig,
+} from "@/lib/integrations";
+import { getPublicOrganizationConnection } from "@/lib/integrations/connections";
 
 export default async function ProductPage({
   params,
@@ -18,8 +24,17 @@ export default async function ProductPage({
   const product = await assertProductAccess(productId, viewer.sub);
   if (!product) notFound();
 
-  const processes = await listProcesses(product.id);
+  const [processes, githubIntegration, githubOauth] = await Promise.all([
+    listProcesses(product.id),
+    getProductIntegration(product.id, "github"),
+    getPublicOrganizationConnection(product.organization_id, "github"),
+  ]);
   const usedKeys = new Set(processes.map((p) => p.template_key));
+  const githubConfig = githubIntegration
+    ? parseGithubConfig(githubIntegration.config)
+    : null;
+  const oauthConnected =
+    githubOauth?.status === "connected" && Boolean(githubOauth.account_login);
 
   return (
     <div className="mx-auto w-full max-w-[960px] space-y-6 px-5 py-6 md:px-8 md:py-8">
@@ -38,6 +53,67 @@ export default async function ProductPage({
             "Link the professional lifecycles this product needs."}
         </p>
       </div>
+
+      <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--console-line)] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Cable className="size-3.5 text-[var(--console-ink)]" aria-hidden />
+            <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+              Connectors
+            </h2>
+          </div>
+          <Link
+            href="/app/connectors"
+            className="text-[12px] font-medium text-[var(--console-accent)] hover:text-[var(--console-accent-hover)]"
+          >
+            Manage all
+          </Link>
+        </div>
+        <div className="px-4 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <GitPullRequest
+                className="mt-0.5 size-3.5 shrink-0 text-[var(--console-ink)]"
+                aria-hidden
+              />
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-[var(--console-ink)]">
+                  GitHub
+                </p>
+                {oauthConnected ? (
+                  <p className="mt-0.5 truncate text-[12px] text-[var(--console-muted)]">
+                    Connected as @{githubOauth?.account_login}
+                    {githubConfig
+                      ? ` · ${githubConfig.owner}/${githubConfig.repo}`
+                      : " · no default repo for this product"}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
+                    Connect GitHub under Connectors (workspace OAuth).
+                  </p>
+                )}
+              </div>
+            </div>
+            <Link
+              href={`/app/connectors/github?product=${product.id}`}
+              className="shrink-0"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 rounded-md text-[12px]"
+              >
+                {oauthConnected
+                  ? githubConfig
+                    ? "Edit"
+                    : "Link repo"
+                  : "Connect"}
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
         <div className="border-b border-[var(--console-line)] px-4 py-3">

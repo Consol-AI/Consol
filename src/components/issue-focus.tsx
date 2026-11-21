@@ -9,6 +9,8 @@ import {
   Check,
   CheckCircle2,
   Circle,
+  ExternalLink,
+  GitPullRequest,
   Loader2,
   Terminal,
   X,
@@ -39,6 +41,7 @@ import type {
   StageTransition,
   WorkItem,
 } from "@/lib/factory";
+import type { WorkItemExternalLink } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -50,6 +53,7 @@ type Props = {
   flowBacked: boolean;
   runEvents: StageRunEvent[];
   messages: Message[];
+  externalLinks?: WorkItemExternalLink[];
   returnView: ProcessViewMode;
 };
 
@@ -62,6 +66,7 @@ export function IssueFocus({
   flowBacked,
   runEvents,
   messages,
+  externalLinks = [],
   returnView,
 }: Props) {
   const router = useRouter();
@@ -114,8 +119,10 @@ export function IssueFocus({
         const result = await advanceWorkItemAction(formData);
         setNotice(result.summary);
         router.refresh();
-      } catch {
-        setError("Could not advance this issue.");
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not advance this issue.",
+        );
       }
     });
   }
@@ -358,10 +365,16 @@ export function IssueFocus({
                             >
                               {pending ? (
                                 <Loader2 className="size-3.5 animate-spin" />
+                              ) : stage.stage_key === "open-pr" ||
+                                String(config.path ?? "") === "open-pr" ? (
+                                <GitPullRequest className="size-3.5" />
                               ) : (
                                 <Terminal className="size-3.5" />
                               )}
-                              Run script
+                              {stage.stage_key === "open-pr" ||
+                              String(config.path ?? "") === "open-pr"
+                                ? "Open pull request"
+                                : "Run script"}
                             </Button>
                           ) : null}
                           {flowBacked && stage.stage_type === "human"
@@ -420,6 +433,56 @@ export function IssueFocus({
               })}
             </ol>
           </section>
+
+          {externalLinks.length > 0 ? (
+            <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+              <header className="border-b border-[var(--console-line)] px-4 py-3">
+                <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+                  Linked artifacts
+                </h2>
+                <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
+                  External links created by integrations.
+                </p>
+              </header>
+              <ul className="divide-y divide-[var(--console-line)]">
+                {externalLinks.map((link) => (
+                  <li key={link.id} className="px-4 py-3">
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group flex items-start gap-2.5"
+                    >
+                      <GitPullRequest
+                        className="mt-0.5 size-3.5 shrink-0 text-[var(--console-ink)]"
+                        aria-hidden
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13px] font-medium text-[var(--console-ink)] group-hover:text-[var(--console-accent)]">
+                            {link.title ||
+                              (link.external_id
+                                ? `PR #${link.external_id}`
+                                : link.link_type)}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="h-5 border-transparent bg-[var(--console-panel)] px-1.5 text-[10px] text-[var(--console-muted)]"
+                          >
+                            {link.provider} · {link.link_type}
+                          </Badge>
+                          <ExternalLink className="size-3 text-[var(--console-faint)]" />
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px] text-[var(--console-faint)]">
+                          {link.url}
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
             <header className="border-b border-[var(--console-line)] px-4 py-3">

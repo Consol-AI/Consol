@@ -1,13 +1,15 @@
+import { runOpenPullRequest } from "@/lib/flows/scripts/open-pr";
 import { runValidateEvidence } from "@/lib/flows/scripts/validate-evidence";
 import { runVerifyDelivery } from "@/lib/flows/scripts/verify-delivery";
 import type { ScriptRunInput, ScriptRunResult } from "@/lib/flows/scripts/types";
 
 const SCRIPT_RUNNERS: Record<
   string,
-  (input: ScriptRunInput) => ScriptRunResult
+  (input: ScriptRunInput) => ScriptRunResult | Promise<ScriptRunResult>
 > = {
   "verify-delivery": runVerifyDelivery,
   "validate-evidence": runValidateEvidence,
+  "open-pr": runOpenPullRequest,
 };
 
 function runInline(input: ScriptRunInput): ScriptRunResult {
@@ -33,18 +35,26 @@ function runInline(input: ScriptRunInput): ScriptRunResult {
   };
 }
 
-export function runFlowScript(input: {
+export async function runFlowScript(input: {
   path?: string;
   inline?: string;
   title: string;
   body: string;
   stageKey: string;
-}): ScriptRunResult {
+  productId?: string;
+  processId?: string;
+  workItemId?: string;
+  actorSub?: string;
+}): Promise<ScriptRunResult> {
   const payload: ScriptRunInput = {
     title: input.title,
     body: input.body,
     stageKey: input.stageKey,
     inline: input.inline,
+    productId: input.productId,
+    processId: input.processId,
+    workItemId: input.workItemId,
+    actorSub: input.actorSub,
   };
 
   if (input.path) {
