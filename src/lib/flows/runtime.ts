@@ -130,16 +130,21 @@ export async function runScriptStage(input: {
   item: WorkItem;
   stage: Stage;
   actorSub: string;
+  productId?: string;
 }): Promise<{ outcome: "success" | "failure"; summary: string }> {
   const config = stageConfig(input.stage);
   const path = asString(config.path) || undefined;
   const inline = asString(config.inline) || undefined;
-  const result = runFlowScript({
+  const result = await runFlowScript({
     path,
     inline,
     title: input.item.title,
     body: input.item.body,
     stageKey: input.stage.stage_key || input.stage.id,
+    productId: input.productId,
+    processId: input.item.process_id,
+    workItemId: input.item.id,
+    actorSub: input.actorSub,
   });
 
   await appendSystemNote({
@@ -203,6 +208,7 @@ export async function advanceWorkItem(input: {
         item: (await getWorkItem(item.id))!,
         stage,
         actorSub: input.actorSub,
+        productId: process.product_id,
       });
       summary = scriptResult.summary;
       outcome = scriptResult.outcome;

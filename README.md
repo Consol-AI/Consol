@@ -8,9 +8,10 @@ Consol is a **product factory** for cross-functional teams: shared product works
 2. Open **Projects** to create a **product** and link teammates.
 3. Browse **Flows** to preview process templates (stages, owners, transitions) before attaching them.
 4. Attach process flow templates (PM, software delivery, design, data analysis) — typed stages (`agent` / `human` / `script`) with transitions.
-5. Advance **work items** through the flow (run agents, approve human gates, run scripts).
-6. Chat with **Forge AI** on Home, a process, or a specific item.
-7. **Create teammate agents** (preset or blank) — each one is a Consol specialist and a deployable Agent SDK project under `agents/<slug>/`.
+5. Connect **GitHub** on a product (owner/repo) so software delivery can open draft pull requests.
+6. Advance **work items** through the flow (run agents, open PRs, approve human gates, run scripts).
+7. Chat with **Forge AI** on Home, a process, or a specific item.
+8. **Create teammate agents** (preset or blank) — each one is a Consol specialist and a deployable Agent SDK project under `agents/<slug>/`.
 
 ## Run locally
 
@@ -75,6 +76,15 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 | `DATABASE_SSL` | Set `0` to accept Railway’s self-signed public proxy cert |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway key for live model replies |
 | `OPENAI_API_KEY` | Alternate live model key if Gateway is unset |
+| `GITHUB_TOKEN` | Personal access token for opening real draft PRs |
+| `CONSOL_GITHUB_DRY_RUN` | Force dry-run PR opens (`1`) even when a token is set |
+
+### GitHub
+
+1. Open a product → **GitHub** → set owner, repo, and base branch.
+2. Attach (or re-attach) the **Software delivery** flow — it includes an **Open PR** stage after Build.
+3. On a work item at Open PR, choose **Open pull request**.
+4. Without `GITHUB_TOKEN`, Consol records a dry-run PR link so the flow can be exercised locally.
 
 Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `cursor-app.json` declares a Postgres database. For Railway testing, prefer `npm run db:railway-env`.
 

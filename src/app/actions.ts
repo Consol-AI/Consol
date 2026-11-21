@@ -22,6 +22,10 @@ import {
   moveWorkItem,
   updateWorkItem,
 } from "@/lib/factory";
+import {
+  clearProductIntegration,
+  upsertGithubIntegration,
+} from "@/lib/integrations";
 
 export async function createProductAction(formData: FormData) {
   const viewer = await requireViewer();
@@ -158,4 +162,39 @@ export async function updateWorkItemAction(formData: FormData) {
 
   await updateWorkItem({ itemId, title, body });
   revalidatePath(`/app/products/${product.id}/processes/${process.id}`);
+}
+
+export async function saveGithubIntegrationAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const productId = String(formData.get("productId") ?? "");
+  const owner = String(formData.get("owner") ?? "").trim();
+  const repo = String(formData.get("repo") ?? "").trim();
+  const baseBranch = String(formData.get("baseBranch") ?? "main").trim();
+  const headBranchPrefix = String(
+    formData.get("headBranchPrefix") ?? "consol/",
+  ).trim();
+
+  const product = await assertProductAccess(productId, viewer.sub);
+  if (!product) throw new Error("Forbidden");
+  if (!owner || !repo) throw new Error("Owner and repository are required");
+
+  await upsertGithubIntegration({
+    productId,
+    owner,
+    repo,
+    baseBranch,
+    headBranchPrefix,
+    createdBy: viewer.sub,
+  });
+  revalidatePath(`/app/products/${productId}`);
+}
+
+export async function clearGithubIntegrationAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const productId = String(formData.get("productId") ?? "");
+  const product = await assertProductAccess(productId, viewer.sub);
+  if (!product) throw new Error("Forbidden");
+
+  await clearProductIntegration(productId, "github");
+  revalidatePath(`/app/products/${productId}`);
 }

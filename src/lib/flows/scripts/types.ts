@@ -3,6 +3,11 @@ export type ScriptRunInput = {
   body: string;
   stageKey: string;
   inline?: string;
+  /** Optional execution context for integration scripts. */
+  productId?: string;
+  processId?: string;
+  workItemId?: string;
+  actorSub?: string;
 };
 
 export type ScriptRunResult = {

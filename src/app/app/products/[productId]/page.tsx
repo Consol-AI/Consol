@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { addProcessAction } from "@/app/actions";
+import { GithubIntegrationForm } from "@/components/github-integration-form";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/lib/auth";
 import { listFlows } from "@/lib/flows";
 import { assertProductAccess, listProcesses } from "@/lib/factory";
+import {
+  getProductIntegration,
+  githubAuthConfigured,
+  parseGithubConfig,
+} from "@/lib/integrations";
 
 export default async function ProductPage({
   params,
@@ -18,8 +24,14 @@ export default async function ProductPage({
   const product = await assertProductAccess(productId, viewer.sub);
   if (!product) notFound();
 
-  const processes = await listProcesses(product.id);
+  const [processes, githubIntegration] = await Promise.all([
+    listProcesses(product.id),
+    getProductIntegration(product.id, "github"),
+  ]);
   const usedKeys = new Set(processes.map((p) => p.template_key));
+  const githubConfig = githubIntegration
+    ? parseGithubConfig(githubIntegration.config)
+    : null;
 
   return (
     <div className="mx-auto w-full max-w-[960px] space-y-6 px-5 py-6 md:px-8 md:py-8">
@@ -38,6 +50,16 @@ export default async function ProductPage({
             "Link the professional lifecycles this product needs."}
         </p>
       </div>
+
+      <GithubIntegrationForm
+        productId={product.id}
+        connected={Boolean(githubConfig)}
+        authConfigured={githubAuthConfigured()}
+        initialOwner={githubConfig?.owner}
+        initialRepo={githubConfig?.repo}
+        initialBaseBranch={githubConfig?.baseBranch}
+        initialHeadBranchPrefix={githubConfig?.headBranchPrefix}
+      />
 
       <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
         <div className="border-b border-[var(--console-line)] px-4 py-3">

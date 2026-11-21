@@ -9,7 +9,9 @@
     "lint": "eslint",
     "agents:serve": "node scripts/agents-serve.mjs",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:railway-env": "node scripts/railway-db-env.mjs"
+    "db:railway-env": "node scripts/railway-db-env.mjs",
+    "smoke:github": "tsx scripts/smoke-github-integration.ts",
+    "smoke:github-flow": "tsx scripts/smoke-github-flow.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.121",
@@ -37,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

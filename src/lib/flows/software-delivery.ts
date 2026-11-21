@@ -5,7 +5,7 @@ export const softwareDeliveryFlow: FlowDefinition = {
   name: "Software delivery",
   domain: "engineering",
   description:
-    "Directed graph from spec through build, review, test, and ship — with reject and test-failure loops.",
+    "Directed graph from spec through build, open PR, review, test, and ship — with reject and test-failure loops.",
   entry: "spec",
   stages: [
     {
@@ -27,6 +27,13 @@ export const softwareDeliveryFlow: FlowDefinition = {
       rolePrompt:
         "You are the Build agent. Turn the approved spec into an implementation plan and concrete change list. Call out files, risks, and verification steps.",
       allowedTools: ["read_work_item", "update_brief", "list_stages"],
+    },
+    {
+      id: "open-pr",
+      type: "script",
+      name: "Open PR",
+      description: "Open a draft GitHub pull request for review.",
+      path: "open-pr",
     },
     {
       id: "review",
@@ -54,7 +61,11 @@ export const softwareDeliveryFlow: FlowDefinition = {
   ],
   transitions: {
     spec: "build",
-    build: "review",
+    build: "open-pr",
+    "open-pr": [
+      { next: "review", when: "success" },
+      { next: "build", when: "failure" },
+    ],
     review: [
       { next: "test", when: "approve" },
       { next: "build", when: "reject" },

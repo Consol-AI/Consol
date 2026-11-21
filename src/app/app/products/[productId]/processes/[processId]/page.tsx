@@ -21,6 +21,7 @@ import {
   listWorkItems,
 } from "@/lib/factory";
 import { getFlow } from "@/lib/flows";
+import { listWorkItemExternalLinks } from "@/lib/integrations";
 import { attentionCounts } from "@/lib/issues/attention";
 
 export default async function ProcessPage({
@@ -65,9 +66,10 @@ export default async function ProcessPage({
     selected && selected.process_id === process.id ? selected : null;
 
   if (selectedSafe) {
-    const [itemMessages, runEvents] = await Promise.all([
+    const [itemMessages, runEvents, externalLinks] = await Promise.all([
       listMessages({ workItemId: selectedSafe.id }),
       listStageRunEvents(selectedSafe.id),
+      listWorkItemExternalLinks(selectedSafe.id),
     ]);
 
     return (
@@ -93,6 +95,7 @@ export default async function ProcessPage({
             flowBacked={flowBacked}
             runEvents={runEvents}
             messages={itemMessages}
+            externalLinks={externalLinks}
             returnView={view}
           />
         </div>
