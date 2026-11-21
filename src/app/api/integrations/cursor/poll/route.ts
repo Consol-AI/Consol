@@ -1,7 +1,7 @@
 import { getIdentity } from "../../../../../../cursor/identity";
 import {
   assertOrgAccess,
-  assertProductAccess,
+  assertProcessAccess,
   getProcess,
   getWorkItem,
 } from "@/lib/factory";
@@ -36,10 +36,14 @@ export async function POST(request: Request) {
   if (body.workItemId) {
     const item = await getWorkItem(body.workItemId);
     if (!item) return Response.json({ error: "not found" }, { status: 404 });
-    const process = await getProcess(item.process_id);
-    if (!process) return Response.json({ error: "not found" }, { status: 404 });
-    const product = await assertProductAccess(process.product_id, viewer.sub);
-    if (!product) return Response.json({ error: "forbidden" }, { status: 403 });
+    const process = await assertProcessAccess(item.process_id, viewer.sub);
+    if (!process) {
+      const missing = await getProcess(item.process_id);
+      if (!missing) {
+        return Response.json({ error: "not found" }, { status: 404 });
+      }
+      return Response.json({ error: "forbidden" }, { status: 403 });
+    }
 
     const results = await pollWorkItemAgentRuns(item.id, viewer.sub);
     return Response.json({
