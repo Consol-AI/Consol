@@ -186,6 +186,8 @@ export async function saveGithubIntegrationAction(formData: FormData) {
     headBranchPrefix,
     createdBy: viewer.sub,
   });
+  revalidatePath("/app/connectors");
+  revalidatePath("/app/connectors/github");
   revalidatePath(`/app/products/${productId}`);
 }
 
@@ -196,5 +198,7 @@ export async function clearGithubIntegrationAction(formData: FormData) {
   if (!product) throw new Error("Forbidden");
 
   await clearProductIntegration(productId, "github");
+  revalidatePath("/app/connectors");
+  revalidatePath("/app/connectors/github");
   revalidatePath(`/app/products/${productId}`);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GitPullRequest, Loader2 } from "lucide-react";
 import {
@@ -11,41 +11,64 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-type Props = {
-  productId: string;
-  initialOwner?: string;
-  initialRepo?: string;
-  initialBaseBranch?: string;
-  initialHeadBranchPrefix?: string;
+export type GithubProductOption = {
+  id: string;
+  name: string;
+  owner?: string;
+  repo?: string;
+  baseBranch?: string;
+  headBranchPrefix?: string;
   connected: boolean;
+};
+
+type Props = {
+  products: GithubProductOption[];
+  initialProductId?: string;
   authConfigured: boolean;
 };
 
 export function GithubIntegrationForm({
-  productId,
-  initialOwner = "",
-  initialRepo = "",
-  initialBaseBranch = "main",
-  initialHeadBranchPrefix = "consol/",
-  connected,
+  products,
+  initialProductId,
   authConfigured,
 }: Props) {
   const router = useRouter();
-  const [owner, setOwner] = useState(initialOwner);
-  const [repo, setRepo] = useState(initialRepo);
-  const [baseBranch, setBaseBranch] = useState(initialBaseBranch);
+  const fallbackId = products[0]?.id ?? "";
+  const [productId, setProductId] = useState(
+    initialProductId && products.some((p) => p.id === initialProductId)
+      ? initialProductId
+      : fallbackId,
+  );
+  const selected = useMemo(
+    () => products.find((p) => p.id === productId) ?? null,
+    [products, productId],
+  );
+
+  const [owner, setOwner] = useState(selected?.owner ?? "");
+  const [repo, setRepo] = useState(selected?.repo ?? "");
+  const [baseBranch, setBaseBranch] = useState(selected?.baseBranch ?? "main");
   const [headBranchPrefix, setHeadBranchPrefix] = useState(
-    initialHeadBranchPrefix,
+    selected?.headBranchPrefix ?? "consol/",
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  useEffect(() => {
+    setOwner(selected?.owner ?? "");
+    setRepo(selected?.repo ?? "");
+    setBaseBranch(selected?.baseBranch ?? "main");
+    setHeadBranchPrefix(selected?.headBranchPrefix ?? "consol/");
+    setError(null);
+    setNotice(null);
+  }, [selected]);
+
   function save() {
+    if (!selected) return;
     setError(null);
     setNotice(null);
     const formData = new FormData();
-    formData.set("productId", productId);
+    formData.set("productId", selected.id);
     formData.set("owner", owner);
     formData.set("repo", repo);
     formData.set("baseBranch", baseBranch);
@@ -56,16 +79,19 @@ export function GithubIntegrationForm({
         setNotice("GitHub repository linked.");
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not save GitHub link.");
+        setError(
+          err instanceof Error ? err.message : "Could not save GitHub link.",
+        );
       }
     });
   }
 
   function clear() {
+    if (!selected) return;
     setError(null);
     setNotice(null);
     const formData = new FormData();
-    formData.set("productId", productId);
+    formData.set("productId", selected.id);
     startTransition(async () => {
       try {
         await clearGithubIntegrationAction(formData);
@@ -76,20 +102,54 @@ export function GithubIntegrationForm({
         setNotice("GitHub link removed.");
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not remove GitHub link.");
+        setError(
+          err instanceof Error ? err.message : "Could not remove GitHub link.",
+        );
       }
     });
+  }
+
+  if (products.length === 0) {
+    return (
+      <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+        <div className="px-4 py-10 text-center">
+          <GitPullRequest
+            className="mx-auto size-7 text-[var(--console-faint)]"
+            aria-hidden
+          />
+          <p className="mt-3 text-[13px] font-medium text-[var(--console-ink)]">
+            Create a product first
+          </p>
+          <p className="mt-1 text-[12px] text-[var(--console-muted)]">
+            GitHub repos are linked per product so software delivery knows where
+            to open pull requests.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-4 h-8 rounded-md text-[12px]"
+            variant="outline"
+            onClick={() => router.push("/app/projects")}
+          >
+            Open projects
+          </Button>
+        </div>
+      </section>
+    );
   }
 
   return (
     <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
       <div className="border-b border-[var(--console-line)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <GitPullRequest className="size-3.5 text-[var(--console-ink)]" aria-hidden />
+          <GitPullRequest
+            className="size-3.5 text-[var(--console-ink)]"
+            aria-hidden
+          />
           <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
-            GitHub
+            Repository binding
           </h2>
-          {connected ? (
+          {selected?.connected ? (
             <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
               Connected
             </span>
@@ -100,8 +160,8 @@ export function GithubIntegrationForm({
           )}
         </div>
         <p className="mt-1 text-[12px] text-[var(--console-muted)]">
-          Link a repository so the software delivery flow can open draft pull
-          requests.
+          Choose a product, then link the GitHub repository used by its
+          software delivery flow.
         </p>
       </div>
 
@@ -118,6 +178,27 @@ export function GithubIntegrationForm({
             {error ?? notice}
           </div>
         ) : null}
+
+        <label className="block space-y-1.5">
+          <span className="text-[11px] font-medium text-[var(--console-faint)]">
+            Product
+          </span>
+          <select
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            disabled={pending}
+            className="h-9 w-full rounded-md border border-[var(--console-line)] bg-white px-2.5 text-[13px] text-[var(--console-ink)] outline-none focus-visible:border-[var(--console-accent)] focus-visible:ring-3 focus-visible:ring-[var(--console-accent-ring)]"
+          >
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+                {product.connected && product.owner && product.repo
+                  ? ` — ${product.owner}/${product.repo}`
+                  : ""}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block space-y-1.5">
@@ -185,9 +266,9 @@ export function GithubIntegrationForm({
             className="h-8 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
           >
             {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            {connected ? "Update repository" : "Connect repository"}
+            {selected?.connected ? "Update repository" : "Connect repository"}
           </Button>
-          {connected ? (
+          {selected?.connected ? (
             <Button
               type="button"
               size="sm"

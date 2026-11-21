@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Cable, GitPullRequest } from "lucide-react";
 import { addProcessAction } from "@/app/actions";
-import { GithubIntegrationForm } from "@/components/github-integration-form";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/lib/auth";
 import { listFlows } from "@/lib/flows";
 import { assertProductAccess, listProcesses } from "@/lib/factory";
 import {
   getProductIntegration,
-  githubAuthConfigured,
   parseGithubConfig,
 } from "@/lib/integrations";
 
@@ -51,15 +50,63 @@ export default async function ProductPage({
         </p>
       </div>
 
-      <GithubIntegrationForm
-        productId={product.id}
-        connected={Boolean(githubConfig)}
-        authConfigured={githubAuthConfigured()}
-        initialOwner={githubConfig?.owner}
-        initialRepo={githubConfig?.repo}
-        initialBaseBranch={githubConfig?.baseBranch}
-        initialHeadBranchPrefix={githubConfig?.headBranchPrefix}
-      />
+      <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--console-line)] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Cable className="size-3.5 text-[var(--console-ink)]" aria-hidden />
+            <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
+              Connectors
+            </h2>
+          </div>
+          <Link
+            href="/app/connectors"
+            className="text-[12px] font-medium text-[var(--console-accent)] hover:text-[var(--console-accent-hover)]"
+          >
+            Manage all
+          </Link>
+        </div>
+        <div className="px-4 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <GitPullRequest
+                className="mt-0.5 size-3.5 shrink-0 text-[var(--console-ink)]"
+                aria-hidden
+              />
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-[var(--console-ink)]">
+                  GitHub
+                </p>
+                {githubConfig ? (
+                  <p className="mt-0.5 truncate text-[12px] text-[var(--console-muted)]">
+                    {githubConfig.owner}/{githubConfig.repo}
+                    <span className="text-[var(--console-faint)]">
+                      {" "}
+                      · {githubConfig.baseBranch}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
+                    Not linked — required to open pull requests.
+                  </p>
+                )}
+              </div>
+            </div>
+            <Link
+              href={`/app/connectors/github?product=${product.id}`}
+              className="shrink-0"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 rounded-md text-[12px]"
+              >
+                {githubConfig ? "Edit" : "Connect"}
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <section className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
         <div className="border-b border-[var(--console-line)] px-4 py-3">

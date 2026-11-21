@@ -25,3 +25,11 @@ export type {
   CreateGithubPullRequestInput,
   GithubPullRequest,
 } from "@/lib/integrations/github/client";
+export {
+  getConnector,
+  listConnectors,
+} from "@/lib/integrations/catalog";
+export type {
+  ConnectorDefinition,
+  ConnectorKey,
+} from "@/lib/integrations/catalog";
