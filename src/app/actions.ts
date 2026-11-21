@@ -10,6 +10,7 @@ import {
 } from "@/lib/flows/runtime";
 import {
   addProcessFromTemplate,
+  assertOrgAccess,
   assertProductAccess,
   createProduct,
   createWorkItem,
@@ -26,6 +27,15 @@ import {
   clearProductIntegration,
   upsertGithubIntegration,
 } from "@/lib/integrations";
+import {
+  deleteOrganizationConnection,
+  getOrganizationAccessToken,
+} from "@/lib/integrations/connections";
+import {
+  getGithubOAuthAppConfig,
+  githubOAuthConfigured,
+  revokeGithubToken,
+} from "@/lib/integrations/github/oauth";
 
 export async function createProductAction(formData: FormData) {
   const viewer = await requireViewer();
@@ -201,4 +211,26 @@ export async function clearGithubIntegrationAction(formData: FormData) {
   revalidatePath("/app/connectors");
   revalidatePath("/app/connectors/github");
   revalidatePath(`/app/products/${productId}`);
+}
+
+export async function disconnectGithubOauthAction() {
+  const viewer = await requireViewer();
+  const org = await ensureWorkspace(viewer);
+  if (!(await assertOrgAccess(org.id, viewer.sub))) {
+    throw new Error("Forbidden");
+  }
+
+  const token = await getOrganizationAccessToken(org.id, "github");
+  const deleted = await deleteOrganizationConnection(org.id, "github");
+  if (deleted && token && githubOAuthConfigured()) {
+    try {
+      const { clientId, clientSecret } = getGithubOAuthAppConfig();
+      await revokeGithubToken({ clientId, clientSecret, accessToken: token });
+    } catch {
+      // Local row already removed; revoke is best-effort.
+    }
+  }
+
+  revalidatePath("/app/connectors");
+  revalidatePath("/app/connectors/github");
 }

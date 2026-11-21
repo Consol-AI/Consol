@@ -1,3 +1,4 @@
+import { getProduct, updateWorkItem } from "@/lib/factory";
 import {
   addWorkItemExternalLink,
   createGithubPullRequest,
@@ -5,8 +6,8 @@ import {
   githubHeadBranchName,
   listWorkItemExternalLinks,
 } from "@/lib/integrations";
+import { getOrganizationAccessToken } from "@/lib/integrations/connections";
 import type { ScriptRunInput, ScriptRunResult } from "@/lib/flows/scripts/types";
-import { updateWorkItem } from "@/lib/factory";
 
 function alreadyHasGithubPr(body: string): string | null {
   const match = body.match(
@@ -49,13 +50,27 @@ export async function runOpenPullRequest(
     };
   }
 
+  const product = await getProduct(input.productId);
+  if (!product) {
+    return {
+      ok: false,
+      outcome: "failure",
+      summary: "Open PR failed: product not found.",
+    };
+  }
+
+  const accessToken = await getOrganizationAccessToken(
+    product.organization_id,
+    "github",
+  );
+
   const config = await getGithubConfigForProduct(input.productId);
   if (!config) {
     return {
       ok: false,
       outcome: "failure",
       summary:
-        "Open PR failed: connect a GitHub repository on the product page first.",
+        "Open PR failed: link a default GitHub repository for this product under Connectors → GitHub.",
     };
   }
 
@@ -83,6 +98,7 @@ export async function runOpenPullRequest(
       head,
       base: config.baseBranch,
       draft: true,
+      accessToken,
       markerPath: ".consol/work-item.md",
       markerContent: [
         `# ${input.title}`,
@@ -118,7 +134,7 @@ export async function runOpenPullRequest(
       `---`,
       `### Pull request`,
       pull.dryRun
-        ? `Dry-run draft PR [#${pull.number}](${pull.htmlUrl}) (\`${pull.head}\` → \`${pull.base}\`). Set \`GITHUB_TOKEN\` to open a real PR.`
+        ? `Dry-run draft PR [#${pull.number}](${pull.htmlUrl}) (\`${pull.head}\` → \`${pull.base}\`). Connect GitHub under Connectors to open a real PR.`
         : `Draft PR [#${pull.number}](${pull.htmlUrl}) (\`${pull.head}\` → \`${pull.base}\`).`,
     ]
       .join("\n")

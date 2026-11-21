@@ -16,11 +16,11 @@ export const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
     key: "github",
     name: "GitHub",
     description:
-      "Open draft pull requests from software delivery and link them back to work items.",
+      "Connect a GitHub account with OAuth, then open draft pull requests from software delivery.",
     category: "Source control",
     available: true,
     href: "/app/connectors/github",
-    actions: ["Open draft pull requests", "Link PR URLs to work items"],
+    actions: ["OAuth account connect", "Open draft pull requests"],
   },
   {
     key: "linear",

@@ -16,6 +16,8 @@ export type CreateGithubPullRequestInput = {
   head: string;
   base: string;
   draft?: boolean;
+  /** OAuth access token for the workspace GitHub connection. */
+  accessToken?: string | null;
   /** Marker file content committed onto the head branch before opening the PR. */
   markerPath?: string;
   markerContent?: string;
@@ -26,24 +28,17 @@ type GithubApiError = {
   documentation_url?: string;
 };
 
-function githubToken(): string | null {
-  const token =
-    process.env.GITHUB_TOKEN?.trim() ||
-    process.env.GH_TOKEN?.trim() ||
-    process.env.GITHUB_PAT?.trim() ||
-    "";
-  return token || null;
-}
-
-export function githubAuthConfigured(): boolean {
-  return Boolean(githubToken());
-}
-
-function dryRunEnabled(): boolean {
+function dryRunForced(): boolean {
   const flag = process.env.CONSOL_GITHUB_DRY_RUN?.trim();
-  if (flag === "1" || flag?.toLowerCase() === "true") return true;
-  if (flag === "0" || flag?.toLowerCase() === "false") return false;
-  return !githubAuthConfigured();
+  return flag === "1" || flag?.toLowerCase() === "true";
+}
+
+/** @deprecated Prefer workspace OAuth via organization_connections. */
+export function githubAuthConfigured(): boolean {
+  return Boolean(
+    process.env.GITHUB_CLIENT_ID?.trim() &&
+      process.env.GITHUB_CLIENT_SECRET?.trim(),
+  );
 }
 
 async function githubFetch<T>(
@@ -108,8 +103,16 @@ async function ensureBranchWithMarker(input: {
   markerContent: string;
   commitMessage: string;
 }): Promise<void> {
-  const { token, owner, repo, base, head, markerPath, markerContent, commitMessage } =
-    input;
+  const {
+    token,
+    owner,
+    repo,
+    base,
+    head,
+    markerPath,
+    markerContent,
+    commitMessage,
+  } = input;
   const repoPath = `/repos/${owner}/${repo}`;
 
   type RefResponse = { object: { sha: string } };
@@ -128,7 +131,6 @@ async function ensureBranchWithMarker(input: {
     );
     baseSha = ref.object.sha;
   } catch {
-    // Fall back to the repo default branch tip via commits API.
     const commits = await githubFetch<Array<{ sha: string }>>(
       `${repoPath}/commits?sha=${encodeURIComponent(base)}&per_page=1`,
       { method: "GET", token },
@@ -179,7 +181,6 @@ async function ensureBranchWithMarker(input: {
     }),
   });
 
-  // Create or update the head ref.
   try {
     await githubFetch(`${repoPath}/git/refs`, {
       method: "POST",
@@ -203,7 +204,8 @@ async function ensureBranchWithMarker(input: {
 
 /**
  * Open a draft pull request for a Consol work item.
- * Without GITHUB_TOKEN (or with CONSOL_GITHUB_DRY_RUN=1), returns a dry-run result.
+ * Uses the workspace OAuth access token. Without one (or with
+ * CONSOL_GITHUB_DRY_RUN=1), returns a dry-run result.
  */
 export async function createGithubPullRequest(
   input: CreateGithubPullRequestInput,
@@ -213,12 +215,13 @@ export async function createGithubPullRequest(
   const base = input.base.trim() || "main";
   const head = input.head.trim();
   const draft = input.draft !== false;
+  const token = input.accessToken?.trim() || null;
 
   if (!owner || !repo || !head) {
     throw new Error("GitHub owner, repo, and head branch are required");
   }
 
-  if (dryRunEnabled()) {
+  if (dryRunForced() || !token) {
     const number = Math.floor(Math.random() * 900) + 100;
     return {
       number,
@@ -229,11 +232,6 @@ export async function createGithubPullRequest(
       base,
       dryRun: true,
     };
-  }
-
-  const token = githubToken();
-  if (!token) {
-    throw new Error("GITHUB_TOKEN is not configured");
   }
 
   const markerPath = input.markerPath ?? ".consol/work-item.md";

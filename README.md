@@ -76,15 +76,21 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 | `DATABASE_SSL` | Set `0` to accept Railway’s self-signed public proxy cert |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway key for live model replies |
 | `OPENAI_API_KEY` | Alternate live model key if Gateway is unset |
-| `GITHUB_TOKEN` | Personal access token for opening real draft PRs |
-| `CONSOL_GITHUB_DRY_RUN` | Force dry-run PR opens (`1`) even when a token is set |
+| `GITHUB_CLIENT_ID` | GitHub OAuth App client id |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret |
+| `GITHUB_OAUTH_REDIRECT_URI` | Optional callback URL override |
+| `CONNECTOR_TOKEN_SECRET` | Encrypts stored OAuth tokens (optional; falls back to client secret) |
+| `CONSOL_GITHUB_DRY_RUN` | Force dry-run PR opens (`1`) even when OAuth is connected |
 
 ### GitHub
 
-1. Open **Connectors** → **GitHub** → pick a product and set owner, repo, and base branch.
-2. Attach (or re-attach) the **Software delivery** flow — it includes an **Open PR** stage after Build.
-3. On a work item at Open PR, choose **Open pull request**.
-4. Without `GITHUB_TOKEN`, Consol records a dry-run PR link so the flow can be exercised locally.
+1. Create a GitHub OAuth App with callback  
+   `http://127.0.0.1:43123/api/connectors/github/oauth/callback`  
+   and set `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
+2. Open **Connectors** → **GitHub** → **Connect with GitHub** (workspace OAuth — no product required).
+3. Optionally link a default repository to a product on the same page.
+4. Attach **Software delivery** and run **Open pull request** on a work item.
+5. Without an OAuth connection, Consol records a dry-run PR link.
 
 Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `cursor-app.json` declares a Postgres database. For Railway testing, prefer `npm run db:railway-env`.
 

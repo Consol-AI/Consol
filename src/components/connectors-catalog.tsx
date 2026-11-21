@@ -53,7 +53,7 @@ export function ConnectorsCatalog({ connectors, connectedCounts }: Props) {
                       {connector.available ? (
                         count > 0 ? (
                           <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                            {count} product{count === 1 ? "" : "s"} linked
+                            Connected
                           </span>
                         ) : (
                           <span className="rounded-md bg-[var(--console-panel)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--console-muted)]">

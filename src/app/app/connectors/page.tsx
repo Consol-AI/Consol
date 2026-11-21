@@ -1,8 +1,8 @@
 import { ConnectorsCatalog } from "@/components/connectors-catalog";
 import { getViewer } from "@/lib/auth";
-import { ensureWorkspace, listProducts } from "@/lib/factory";
+import { ensureWorkspace } from "@/lib/factory";
 import { listConnectors } from "@/lib/integrations/catalog";
-import { listProductIntegrations } from "@/lib/integrations";
+import { listOrganizationConnections } from "@/lib/integrations/connections";
 
 export default async function ConnectorsPage() {
   const viewer = await getViewer();
@@ -24,15 +24,11 @@ export default async function ConnectorsPage() {
   }
 
   const org = await ensureWorkspace(viewer);
-  const products = await listProducts(org.id);
-  const integrations = (
-    await Promise.all(products.map((p) => listProductIntegrations(p.id)))
-  ).flat();
-
+  const connections = await listOrganizationConnections(org.id);
   const connectedCounts: Record<string, number> = {};
-  for (const row of integrations) {
-    if (row.status === "disabled") continue;
-    connectedCounts[row.provider] = (connectedCounts[row.provider] ?? 0) + 1;
+  for (const row of connections) {
+    if (row.status !== "connected") continue;
+    connectedCounts[row.provider] = 1;
   }
 
   return (

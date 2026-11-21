@@ -33,3 +33,19 @@ export type {
   ConnectorDefinition,
   ConnectorKey,
 } from "@/lib/integrations/catalog";
+export {
+  deleteOrganizationConnection,
+  getOrganizationAccessToken,
+  getOrganizationConnection,
+  getPublicOrganizationConnection,
+  listOrganizationConnections,
+  upsertOrganizationConnection,
+} from "@/lib/integrations/connections";
+export type {
+  OrganizationConnection,
+  PublicOrganizationConnection,
+} from "@/lib/integrations/connections";
+export {
+  githubOAuthConfigured,
+  GITHUB_OAUTH_SCOPES,
+} from "@/lib/integrations/github/oauth";

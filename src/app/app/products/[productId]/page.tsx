@@ -10,6 +10,7 @@ import {
   getProductIntegration,
   parseGithubConfig,
 } from "@/lib/integrations";
+import { getPublicOrganizationConnection } from "@/lib/integrations/connections";
 
 export default async function ProductPage({
   params,
@@ -23,14 +24,17 @@ export default async function ProductPage({
   const product = await assertProductAccess(productId, viewer.sub);
   if (!product) notFound();
 
-  const [processes, githubIntegration] = await Promise.all([
+  const [processes, githubIntegration, githubOauth] = await Promise.all([
     listProcesses(product.id),
     getProductIntegration(product.id, "github"),
+    getPublicOrganizationConnection(product.organization_id, "github"),
   ]);
   const usedKeys = new Set(processes.map((p) => p.template_key));
   const githubConfig = githubIntegration
     ? parseGithubConfig(githubIntegration.config)
     : null;
+  const oauthConnected =
+    githubOauth?.status === "connected" && Boolean(githubOauth.account_login);
 
   return (
     <div className="mx-auto w-full max-w-[960px] space-y-6 px-5 py-6 md:px-8 md:py-8">
@@ -76,17 +80,16 @@ export default async function ProductPage({
                 <p className="text-[13px] font-medium text-[var(--console-ink)]">
                   GitHub
                 </p>
-                {githubConfig ? (
+                {oauthConnected ? (
                   <p className="mt-0.5 truncate text-[12px] text-[var(--console-muted)]">
-                    {githubConfig.owner}/{githubConfig.repo}
-                    <span className="text-[var(--console-faint)]">
-                      {" "}
-                      · {githubConfig.baseBranch}
-                    </span>
+                    Connected as @{githubOauth?.account_login}
+                    {githubConfig
+                      ? ` · ${githubConfig.owner}/${githubConfig.repo}`
+                      : " · no default repo for this product"}
                   </p>
                 ) : (
                   <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
-                    Not linked — required to open pull requests.
+                    Connect GitHub under Connectors (workspace OAuth).
                   </p>
                 )}
               </div>
@@ -101,7 +104,11 @@ export default async function ProductPage({
                 variant="outline"
                 className="h-8 rounded-md text-[12px]"
               >
-                {githubConfig ? "Edit" : "Connect"}
+                {oauthConnected
+                  ? githubConfig
+                    ? "Edit"
+                    : "Link repo"
+                  : "Connect"}
               </Button>
             </Link>
           </div>
