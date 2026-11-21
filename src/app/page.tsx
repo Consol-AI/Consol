@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { FactoryEnterLink } from "@/components/factory-enter-link";
 import { SiteHeader } from "@/components/site-header";
 import { getViewer } from "@/lib/auth";
 
@@ -32,12 +32,7 @@ export default async function HomePage() {
             professional inside it — collaborates with AI in one place.
           </h1>
           <div className="animate-rise-delay mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/app"
-              className="rounded-md bg-[var(--paper)] px-5 py-2.5 text-sm font-medium text-[var(--ink)] transition hover:bg-white"
-            >
-              Enter your factory
-            </Link>
+            <FactoryEnterLink className="rounded-md bg-[var(--paper)] px-5 py-2.5 text-sm font-medium text-[var(--ink)] transition hover:bg-white" />
             <a
               href="#how"
               className="rounded-md border border-[#f3efe4]/35 px-5 py-2.5 text-sm text-[var(--paper)] transition hover:border-[var(--paper)]"
