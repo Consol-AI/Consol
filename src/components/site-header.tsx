@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FactoryEnterLink } from "@/components/factory-enter-link";
 import type { AppViewer } from "@/lib/auth";
 
 export function SiteHeader({
@@ -28,20 +29,14 @@ export function SiteHeader({
             <span className="hidden text-[var(--quiet)] sm:inline">
               {viewer.demo ? `${viewer.name} (demo)` : viewer.name}
             </span>
-            <Link
-              href="/app"
-              className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-[var(--paper)]"
-            >
+            <FactoryEnterLink className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-[var(--paper)]">
               Workspace
-            </Link>
+            </FactoryEnterLink>
           </>
         ) : (
-          <Link
-            href="/app"
-            className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-[var(--paper)]"
-          >
+          <FactoryEnterLink className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-[var(--paper)]">
             Open factory
-          </Link>
+          </FactoryEnterLink>
         )}
       </nav>
     </header>

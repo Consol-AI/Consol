@@ -1,7 +1,6 @@
 import { TeammateRoster } from "@/components/teammate-roster";
 import { getViewer } from "@/lib/auth";
 import { listTeammates } from "@/lib/teammates/registry";
-import { refreshTeammateRuntimeStatus } from "@/lib/teammates/runtime";
 
 export default async function TeammatesPage() {
   const viewer = await getViewer();
@@ -22,10 +21,10 @@ export default async function TeammatesPage() {
     );
   }
 
-  const listed = await listTeammates();
-  const teammates = await Promise.all(
-    listed.map((t) => refreshTeammateRuntimeStatus(t)),
-  );
+  // Don't probe local agent runtimes during RSC — each probe can hang up to
+  // the fetch timeout and blocks the whole navigation. Status refreshes on
+  // the teammate chat page (and when starting a turn).
+  const teammates = await listTeammates();
 
   return <TeammateRoster teammates={teammates} />;
 }
