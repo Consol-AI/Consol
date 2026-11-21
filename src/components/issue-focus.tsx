@@ -206,7 +206,7 @@ export function IssueFocus({
             className={cn(
               "h-5 border-transparent px-1.5 text-[10px]",
               item.status === "done"
-                ? "bg-emerald-50 text-emerald-700"
+                ? "bg-[var(--console-accent-soft)] text-[var(--console-accent)]"
                 : "bg-[var(--console-accent-soft)] text-[var(--console-accent)]",
             )}
           >
@@ -391,7 +391,7 @@ export function IssueFocus({
                               onClick={() =>
                                 onAdvance("done", { execute: true })
                               }
-                              className="h-8 gap-1.5 bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+                              className="h-8 gap-1.5 bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
                             >
                               {pending ? (
                                 <Loader2 className="size-3.5 animate-spin" />
@@ -409,7 +409,7 @@ export function IssueFocus({
                               onClick={() =>
                                 onAdvance("success", { execute: true })
                               }
-                              className="h-8 gap-1.5 bg-slate-800 text-[12px] text-white hover:bg-slate-700"
+                              className="h-8 gap-1.5 bg-zinc-900 text-[12px] text-white hover:bg-zinc-700"
                             >
                               {pending ? (
                                 <Loader2 className="size-3.5 animate-spin" />

@@ -49,66 +49,55 @@
 }
 
 :root {
-  --paper: #f3efe4;
-  --ink: #14241c;
-  --quiet: #5d6a61;
-  --line: #cfc7b6;
-  --panel: #faf7f0;
-  --surface: #fffdf8;
-  --accent-warm: #c45c26;
-  --hero-deep: #0f1f18;
-  --hero-mid: #1d3a2d;
-  --hero-glow: #2f6b4f;
-
-  /* Console — cool neutrals + teal accent */
-  --console-bg: #f6f7f8;
-  --console-sidebar: #fbfbfc;
+  /* Consol design tokens — neutral zinc + indigo, shared by landing and app. */
+  --console-bg: #fafafa;
+  --console-sidebar: #f4f4f5;
   --console-surface: #ffffff;
-  --console-panel: #f3f4f6;
-  --console-line: #e8eaed;
-  --console-ink: #111827;
-  --console-muted: #6b7280;
-  --console-faint: #9ca3af;
-  --console-accent: #0f766e;
-  --console-accent-hover: #0d9488;
-  --console-accent-soft: #ecfdf8;
-  --console-accent-ring: rgb(15 118 110 / 0.16);
-  --console-hover: #f3f4f6;
-  --console-agent: #f0fdfa;
-  --console-shadow: 0 1px 2px rgb(17 24 39 / 0.04);
+  --console-panel: #f4f4f5;
+  --console-line: #e4e4e7;
+  --console-ink: #09090b;
+  --console-muted: #52525b;
+  --console-faint: #a1a1aa;
+  --console-accent: #4f46e5;
+  --console-accent-hover: #4338ca;
+  --console-accent-soft: #eef2ff;
+  --console-accent-ring: rgb(79 70 229 / 0.18);
+  --console-hover: #f4f4f5;
+  --console-agent: #eef2ff;
+  --console-shadow: 0 1px 2px rgb(9 9 11 / 0.05);
 
-  --background: var(--paper);
-  --foreground: var(--ink);
-  --card: var(--surface);
-  --card-foreground: var(--ink);
-  --popover: var(--surface);
-  --popover-foreground: var(--ink);
-  --primary: var(--ink);
-  --primary-foreground: var(--paper);
-  --secondary: #e8e1d2;
-  --secondary-foreground: var(--ink);
-  --muted: #e8e1d2;
-  --muted-foreground: #5d6a61;
-  --accent: #e8e1d2;
-  --accent-foreground: var(--ink);
+  --background: #ffffff;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #09090b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #09090b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #09090b;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: var(--line);
-  --input: var(--line);
-  --ring: var(--hero-glow);
-  --chart-1: #1d3a2d;
-  --chart-2: #c45c26;
-  --chart-3: #5d6a61;
-  --chart-4: #2f6b4f;
-  --chart-5: #8b7355;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #6366f1;
+  --chart-1: #4f46e5;
+  --chart-2: #8b5cf6;
+  --chart-3: #f59e0b;
+  --chart-4: #71717a;
+  --chart-5: #d946ef;
   --radius: 0.625rem;
-  --sidebar: var(--panel);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--ink);
-  --sidebar-primary-foreground: var(--paper);
-  --sidebar-accent: #e8e1d2;
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--line);
-  --sidebar-ring: var(--hero-glow);
+  --sidebar: #f4f4f5;
+  --sidebar-foreground: #09090b;
+  --sidebar-primary: #09090b;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #e4e4e7;
+  --sidebar-accent-foreground: #09090b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #6366f1;
 }
 
 @layer base {
@@ -117,11 +106,6 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 10% -10%, rgb(47 107 79 / 0.12), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 0%, rgb(196 92 38 / 0.08), transparent),
-      linear-gradient(180deg, #f7f3ea 0%, var(--paper) 40%, #efe8d8 100%);
-    background-attachment: fixed;
   }
   html {
     @apply font-sans;
@@ -148,39 +132,12 @@
   }
 }
 
-@keyframes drift {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(2%, -1%, 0) scale(1.04);
-  }
-}
-
-@keyframes pulse-line {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
 .animate-rise {
   animation: rise-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay {
   animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
-}
-
-.animate-drift {
-  animation: drift 18s ease-in-out infinite alternate;
-}
-
-.animate-pulse-line {
-  animation: pulse-line 3.5s ease-in-out infinite;
 }
 
 html {
@@ -192,9 +149,7 @@ html {
     scroll-behavior: auto;
   }
   .animate-rise,
-  .animate-rise-delay,
-  .animate-drift,
-  .animate-pulse-line {
+  .animate-rise-delay {
     animation: none;
   }
 }

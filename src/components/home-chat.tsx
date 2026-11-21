@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LiveDot } from "@/components/live-dot";
 import { useState, useTransition } from "react";
 import {
   ArrowUpRight,
@@ -395,12 +396,17 @@ export function HomeChat({
                         </p>
                         <p
                           className={cn(
-                            "mt-1.5 text-[10px] font-medium uppercase tracking-[0.06em]",
+                            "mt-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.06em]",
                             needsHuman
-                              ? "text-[var(--console-accent)]"
-                              : "text-[var(--console-faint)]",
+                              ? "text-amber-700"
+                              : item.stage_type === "agent"
+                                ? "text-[var(--console-accent)]"
+                                : "text-[var(--console-faint)]",
                           )}
                         >
+                          {!needsHuman && item.stage_type === "agent" ? (
+                            <LiveDot className="size-1.5 [&>span]:size-1.5" />
+                          ) : null}
                           {needsHuman
                             ? "Needs you"
                             : item.stage_type === "agent"

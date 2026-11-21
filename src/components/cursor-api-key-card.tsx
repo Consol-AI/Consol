@@ -70,7 +70,7 @@ export function CursorApiKeyCard({
           </p>
         </div>
         {connected ? (
-          <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+          <span className="rounded-md bg-[var(--console-accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--console-accent)]">
             Connected
           </span>
         ) : envFallbackConfigured ? (

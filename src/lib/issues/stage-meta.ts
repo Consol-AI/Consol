@@ -28,8 +28,8 @@ export function stageMeta(type: string): {
     return {
       label: "Script",
       icon: Terminal,
-      badgeClass: "border-transparent bg-slate-100 text-slate-700",
-      railClass: "bg-slate-500",
+      badgeClass: "border-transparent bg-zinc-100 text-zinc-700",
+      railClass: "bg-zinc-500",
     };
   }
   return {

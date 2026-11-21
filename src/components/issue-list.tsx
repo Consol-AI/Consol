@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LiveDot } from "@/components/live-dot";
 import { Bot, ShieldCheck, Terminal, GitBranch } from "lucide-react";
 import { CreateIssueForm } from "@/components/create-issue-form";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +98,9 @@ export function IssueList({
                       "border-transparent bg-[var(--console-accent-soft)] text-[var(--console-accent)]",
                   )}
                 >
+                  {bucket === "agents_working" && counts[bucket] > 0 ? (
+                    <LiveDot className="mr-0.5" />
+                  ) : null}
                   {ATTENTION_LABELS[bucket]} · {counts[bucket]}
                 </Badge>
               ))}

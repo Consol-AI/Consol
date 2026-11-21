@@ -10,6 +10,7 @@ import {
   Home,
   Users,
 } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
 import { NavPending } from "@/components/nav-pending";
 import { cn } from "@/lib/utils";
 
@@ -46,9 +47,7 @@ export function AppSidebar({
     <aside className="console-sidebar flex w-[232px] shrink-0 flex-col bg-[var(--console-sidebar)]">
       <div className="px-4 pb-3 pt-5">
         <Link href="/app" className="group flex items-center gap-2.5">
-          <span className="flex size-7 items-center justify-center rounded-md bg-[var(--console-ink)] text-[11px] font-semibold tracking-tight text-white transition group-hover:bg-[var(--console-accent)]">
-            C
-          </span>
+          <BrandMark className="size-7 transition group-hover:shadow-[0_0_14px_rgb(129_140_248/0.45)]" />
           <span className="min-w-0">
             <span className="block truncate text-[13px] font-semibold text-[var(--console-ink)]">
               Consol

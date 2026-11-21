@@ -13,7 +13,7 @@ const STATUS_LABEL: Record<TeammateRecord["status"], string> = {
 function statusDot(status: TeammateRecord["status"]) {
   switch (status) {
     case "local":
-      return "bg-emerald-500";
+      return "bg-indigo-500";
     case "stopped":
       return "bg-amber-500";
     default:
@@ -63,7 +63,7 @@ export function TeammateRoster({ teammates }: { teammates: TeammateRecord[] }) {
               <Link href="/app/teammates/new" className="mt-5 inline-block">
                 <Button
                   size="sm"
-                  className="h-8 rounded-md bg-[var(--console-accent)] text-[12px] text-white hover:bg-[var(--console-accent-hover)]"
+                  className="h-8 rounded-md bg-[var(--console-ink)] text-[12px] text-white hover:bg-[var(--console-accent)]"
                 >
                   Create teammate
                 </Button>
