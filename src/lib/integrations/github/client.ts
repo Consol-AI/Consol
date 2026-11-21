@@ -284,3 +284,257 @@ export async function createGithubPullRequest(
     dryRun: false,
   };
 }
+
+export type GithubPullRequestDetails = {
+  number: number;
+  htmlUrl: string;
+  title: string;
+  state: string;
+  merged: boolean;
+  draft: boolean;
+  headSha: string;
+  headRef: string;
+  baseRef: string;
+  dryRun: boolean;
+};
+
+export type GithubCheckSummary = {
+  state: "success" | "failure" | "pending" | "neutral";
+  total: number;
+  success: number;
+  failure: number;
+  pending: number;
+  summary: string;
+  dryRun: boolean;
+};
+
+export type MergeGithubPullRequestResult = {
+  merged: boolean;
+  message: string;
+  sha?: string;
+  dryRun: boolean;
+};
+
+function parseOwnerRepoFromPrUrl(prUrl: string): {
+  owner: string;
+  repo: string;
+  number: number;
+} | null {
+  const match = prUrl.match(
+    /github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/i,
+  );
+  if (!match) return null;
+  return {
+    owner: match[1],
+    repo: match[2],
+    number: Number(match[3]),
+  };
+}
+
+export async function getGithubPullRequest(input: {
+  owner: string;
+  repo: string;
+  number: number;
+  accessToken?: string | null;
+}): Promise<GithubPullRequestDetails> {
+  const token = input.accessToken?.trim() || null;
+  if (dryRunForced() || !token) {
+    return {
+      number: input.number,
+      htmlUrl: `https://github.com/${input.owner}/${input.repo}/pull/${input.number}`,
+      title: `PR #${input.number}`,
+      state: "open",
+      merged: false,
+      draft: false,
+      headSha: "dryrun0000000000000000000000000000000000",
+      headRef: "cursor/dry-run",
+      baseRef: "main",
+      dryRun: true,
+    };
+  }
+
+  type PullResponse = {
+    number: number;
+    html_url: string;
+    title: string;
+    state: string;
+    merged: boolean;
+    draft: boolean;
+    head: { sha: string; ref: string };
+    base: { ref: string };
+  };
+
+  const pull = await githubFetch<PullResponse>(
+    `/repos/${input.owner}/${input.repo}/pulls/${input.number}`,
+    { method: "GET", token },
+  );
+
+  return {
+    number: pull.number,
+    htmlUrl: pull.html_url,
+    title: pull.title,
+    state: pull.state,
+    merged: pull.merged,
+    draft: pull.draft,
+    headSha: pull.head.sha,
+    headRef: pull.head.ref,
+    baseRef: pull.base.ref,
+    dryRun: false,
+  };
+}
+
+export async function getGithubPullRequestFromUrl(input: {
+  prUrl: string;
+  accessToken?: string | null;
+}): Promise<GithubPullRequestDetails | null> {
+  const parsed = parseOwnerRepoFromPrUrl(input.prUrl);
+  if (!parsed) return null;
+  return getGithubPullRequest({
+    ...parsed,
+    accessToken: input.accessToken,
+  });
+}
+
+export async function getGithubCheckSummary(input: {
+  owner: string;
+  repo: string;
+  ref: string;
+  accessToken?: string | null;
+}): Promise<GithubCheckSummary> {
+  const token = input.accessToken?.trim() || null;
+  if (dryRunForced() || !token || input.ref.startsWith("dryrun")) {
+    return {
+      state: "success",
+      total: 1,
+      success: 1,
+      failure: 0,
+      pending: 0,
+      summary: "Dry-run checks: all green.",
+      dryRun: true,
+    };
+  }
+
+  type CheckRunsResponse = {
+    total_count: number;
+    check_runs: Array<{
+      name: string;
+      status: string;
+      conclusion: string | null;
+    }>;
+  };
+
+  const checks = await githubFetch<CheckRunsResponse>(
+    `/repos/${input.owner}/${input.repo}/commits/${encodeURIComponent(input.ref)}/check-runs?per_page=100`,
+    { method: "GET", token },
+  );
+
+  let success = 0;
+  let failure = 0;
+  let pending = 0;
+  for (const run of checks.check_runs) {
+    if (run.status !== "completed") {
+      pending += 1;
+      continue;
+    }
+    const conclusion = (run.conclusion ?? "").toLowerCase();
+    if (
+      conclusion === "success" ||
+      conclusion === "neutral" ||
+      conclusion === "skipped"
+    ) {
+      success += 1;
+    } else if (
+      conclusion === "failure" ||
+      conclusion === "timed_out" ||
+      conclusion === "cancelled" ||
+      conclusion === "action_required"
+    ) {
+      failure += 1;
+    } else {
+      success += 1;
+    }
+  }
+
+  // No check runs: treat as success so ship gate can proceed on repos without CI.
+  if (checks.total_count === 0) {
+    return {
+      state: "success",
+      total: 0,
+      success: 0,
+      failure: 0,
+      pending: 0,
+      summary: "No GitHub check runs on this commit — treated as success.",
+      dryRun: false,
+    };
+  }
+
+  const state: GithubCheckSummary["state"] =
+    failure > 0 ? "failure" : pending > 0 ? "pending" : "success";
+
+  return {
+    state,
+    total: checks.total_count,
+    success,
+    failure,
+    pending,
+    summary:
+      state === "success"
+        ? `Checks passed (${success}/${checks.total_count}).`
+        : state === "failure"
+          ? `Checks failed (${failure} failing, ${pending} pending).`
+          : `Checks still running (${pending} pending, ${success} green).`,
+    dryRun: false,
+  };
+}
+
+export async function mergeGithubPullRequest(input: {
+  owner: string;
+  repo: string;
+  number: number;
+  accessToken?: string | null;
+  mergeMethod?: "merge" | "squash" | "rebase";
+  commitTitle?: string;
+}): Promise<MergeGithubPullRequestResult> {
+  const token = input.accessToken?.trim() || null;
+  if (dryRunForced() || !token) {
+    return {
+      merged: true,
+      message: `Dry-run merged PR #${input.number}`,
+      sha: "drymerge000000000000000000000000000000000",
+      dryRun: true,
+    };
+  }
+
+  type MergeResponse = {
+    merged: boolean;
+    message: string;
+    sha?: string;
+  };
+
+  const result = await githubFetch<MergeResponse>(
+    `/repos/${input.owner}/${input.repo}/pulls/${input.number}/merge`,
+    {
+      method: "PUT",
+      token,
+      body: JSON.stringify({
+        merge_method: input.mergeMethod ?? "squash",
+        commit_title: input.commitTitle,
+      }),
+    },
+  );
+
+  return {
+    merged: result.merged,
+    message: result.message,
+    sha: result.sha,
+    dryRun: false,
+  };
+}
+
+export function parseGithubPrUrl(prUrl: string): {
+  owner: string;
+  repo: string;
+  number: number;
+} | null {
+  return parseOwnerRepoFromPrUrl(prUrl);
+}

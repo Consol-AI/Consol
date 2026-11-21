@@ -5,6 +5,7 @@ import {
   getLanguageModel,
   mockAssistantReply,
 } from "@/lib/ai";
+import { parseDeliveryIntent, startSoftwareDelivery } from "@/lib/delivery/start";
 import {
   addMessage,
   assertOrgAccess,
@@ -22,6 +23,12 @@ type ChatBody = {
   processId?: string;
   workItemId?: string;
   organizationId?: string;
+  /** When true, skip delivery auto-start even if intent matches. */
+  skipDelivery?: boolean;
+  /** Confirm starting a parsed delivery from chat. */
+  confirmDelivery?: boolean;
+  deliveryTitle?: string;
+  deliveryBody?: string;
 };
 
 export async function POST(request: Request) {
@@ -94,6 +101,97 @@ export async function POST(request: Request) {
     authorName: viewer.name,
   });
 
+  // Home-chat delivery initiation (confirm or propose).
+  if (organizationId && !processId && !workItemId && !body.skipDelivery) {
+    const intent = body.confirmDelivery
+      ? {
+          wantsDelivery: true,
+          title: (body.deliveryTitle || message).trim(),
+          body: (body.deliveryBody || message).trim(),
+        }
+      : parseDeliveryIntent(message);
+
+    if (intent.wantsDelivery && body.confirmDelivery) {
+      try {
+        const started = await startSoftwareDelivery({
+          organizationId,
+          actorSub: viewer.sub,
+          title: intent.title,
+          body: intent.body,
+          runSpec: true,
+        });
+        const reply = [
+          `Started **software delivery** for **${started.product.name}**.`,
+          "",
+          `**${started.item.title}**`,
+          started.specSummary
+            ? `Spec draft ready — ${started.specSummary}`
+            : "Work item created at Spec.",
+          "",
+          `Open it: ${started.href}`,
+          "",
+          "Next: approve the spec, then Consol will launch a Cursor Cloud Agent to build and open a PR.",
+        ].join("\n");
+        await addMessage({
+          organizationId,
+          processId: started.process.id,
+          workItemId: started.item.id,
+          role: "assistant",
+          content: reply,
+          authorName: "Forge AI",
+        });
+        return Response.json({
+          reply,
+          delivery: {
+            started: true,
+            href: started.href,
+            itemId: started.item.id,
+            productId: started.product.id,
+            processId: started.process.id,
+            title: started.item.title,
+          },
+        });
+      } catch (error) {
+        const detail =
+          error instanceof Error ? error.message : "Could not start delivery";
+        const reply = `I couldn't start software delivery: ${detail}`;
+        await addMessage({
+          organizationId,
+          role: "assistant",
+          content: reply,
+          authorName: "Forge AI",
+        });
+        return Response.json({ reply, error: detail }, { status: 400 });
+      }
+    }
+
+    if (intent.wantsDelivery && !body.confirmDelivery) {
+      const reply = [
+        `I can start a **software delivery** on **LeagueSports** (repo \`leaguesports/landing-page\`) for:`,
+        "",
+        `**${intent.title}**`,
+        "",
+        "Flow: Spec → Approve spec → Cursor build → Validate → Approve ship → Merge.",
+        "Confirm and I'll create the work item, draft the spec, and park it on Approve spec.",
+      ].join("\n");
+      await addMessage({
+        organizationId,
+        role: "assistant",
+        content: reply,
+        authorName: "Forge AI",
+      });
+      return Response.json({
+        reply,
+        delivery: {
+          started: false,
+          needsConfirm: true,
+          title: intent.title,
+          body: intent.body,
+        },
+      });
+    }
+  }
+
   const model = getLanguageModel();
   if (!model) {
     const reply = mockAssistantReply({
@@ -119,6 +217,7 @@ export async function POST(request: Request) {
         "Help the user coordinate tasks and decisions across projects, processes, and teammates.",
         "Be concrete and concise. Surface what needs a human decision first, then agent work, then waiting items.",
         "When useful, point to a project or work item by name and suggest the next decision or handoff.",
+        "Users can start a LeagueSports software delivery from chat (spec → approve → Cursor build → validate → approve → merge).",
         "Do not invent work that is not in the workspace brief unless the user asks to draft something new.",
         "",
         `Workspace brief:\n${workspaceBriefText}`,

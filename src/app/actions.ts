@@ -323,3 +323,77 @@ export async function disconnectGithubOauthAction() {
   revalidatePath("/app/connectors");
   revalidatePath("/app/connectors/github");
 }
+
+export async function saveCursorApiKeyAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const org = await ensureWorkspace(viewer);
+  if (!(await assertOrgAccess(org.id, viewer.sub))) {
+    throw new Error("Forbidden");
+  }
+  const apiKey = String(formData.get("apiKey") ?? "").trim();
+  if (!apiKey) throw new Error("Cursor API key is required");
+
+  const { saveCursorApiKey } = await import(
+    "@/lib/integrations/cursor/credentials"
+  );
+  await saveCursorApiKey({
+    organizationId: org.id,
+    apiKey,
+    createdBy: viewer.sub,
+  });
+  revalidatePath("/app/connectors");
+  revalidatePath("/app/connectors/cursor");
+}
+
+export async function clearCursorApiKeyAction() {
+  const viewer = await requireViewer();
+  const org = await ensureWorkspace(viewer);
+  if (!(await assertOrgAccess(org.id, viewer.sub))) {
+    throw new Error("Forbidden");
+  }
+  const { clearCursorApiKey } = await import(
+    "@/lib/integrations/cursor/credentials"
+  );
+  await clearCursorApiKey(org.id);
+  revalidatePath("/app/connectors");
+  revalidatePath("/app/connectors/cursor");
+}
+
+export async function startSoftwareDeliveryAction(input: {
+  title: string;
+  body?: string;
+  productId?: string;
+  runSpec?: boolean;
+}) {
+  const viewer = await requireViewer();
+  const org = await ensureWorkspace(viewer);
+  if (!(await assertOrgAccess(org.id, viewer.sub))) {
+    throw new Error("Forbidden");
+  }
+
+  const { startSoftwareDelivery } = await import("@/lib/delivery/start");
+  const result = await startSoftwareDelivery({
+    organizationId: org.id,
+    actorSub: viewer.sub,
+    title: input.title,
+    body: input.body,
+    productId: input.productId,
+    runSpec: input.runSpec,
+  });
+
+  revalidatePath("/app");
+  revalidatePath("/app/projects");
+  revalidatePath(`/app/products/${result.product.id}`);
+  revalidatePath(
+    `/app/products/${result.product.id}/processes/${result.process.id}`,
+  );
+
+  return {
+    productId: result.product.id,
+    processId: result.process.id,
+    itemId: result.item.id,
+    href: result.href,
+    title: result.item.title,
+    stageSummary: result.specSummary ?? "Work item created.",
+  };
+}

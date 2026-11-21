@@ -27,6 +27,7 @@ export type AdvanceOutcome =
   | "reject"
   | "success"
   | "failure"
+  | "pending"
   | "done";
 
 export type AdvanceResult = {
@@ -36,6 +37,8 @@ export type AdvanceResult = {
   outcome: string;
   summary: string;
   completed: boolean;
+  /** True when a script/agent is still running and the item did not advance. */
+  pending?: boolean;
 };
 
 export {
@@ -132,7 +135,10 @@ export async function runScriptStage(input: {
   stage: Stage;
   actorSub: string;
   productId?: string;
-}): Promise<{ outcome: "success" | "failure"; summary: string }> {
+}): Promise<{
+  outcome: "success" | "failure" | "pending";
+  summary: string;
+}> {
   const config = stageConfig(input.stage);
   const path = asString(config.path) || undefined;
   const inline = asString(config.inline) || undefined;
@@ -164,6 +170,7 @@ export async function runScriptStage(input: {
     outcome: result.outcome,
     summary: result.summary,
     createdBy: input.actorSub,
+    metadata: { path: path ?? null },
   });
 
   return { outcome: result.outcome, summary: result.summary };
@@ -214,6 +221,17 @@ export async function advanceWorkItem(input: {
       });
       summary = scriptResult.summary;
       outcome = scriptResult.outcome;
+      if (scriptResult.outcome === "pending") {
+        return {
+          item: (await getWorkItem(item.id))!,
+          fromStageKey: stageKey,
+          toStageKey: stageKey,
+          outcome: "pending",
+          summary,
+          completed: false,
+          pending: true,
+        };
+      }
     } else if (stage.stage_type === "human") {
       throw new Error("Human stages require approve/reject, not execute");
     }
@@ -282,6 +300,36 @@ export async function advanceWorkItem(input: {
   const moved = await moveWorkItem(item.id, nextStage.id);
   if (moved.status === "done") {
     await setWorkItemStatus(item.id, "open");
+  }
+
+  // After human approval into an automated script stage, kick it immediately
+  // (spec-approve → build launches Cursor; ship-approve → merge closes the PR).
+  if (
+    !input.execute &&
+    stage.stage_type === "human" &&
+    outcome === "approve" &&
+    nextStage.stage_type === "script" &&
+    (nextStage.stage_key === "merge" || nextStage.stage_key === "build")
+  ) {
+    try {
+      return await advanceWorkItem({
+        itemId: item.id,
+        outcome: "default",
+        actorSub: input.actorSub,
+        execute: true,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Follow-up stage failed";
+      return {
+        item: (await getWorkItem(item.id))!,
+        fromStageKey: stageKey,
+        toStageKey: edge.to_stage_key,
+        outcome,
+        summary: `${summary || `Moved to ${nextStage.name}.`} ${nextStage.name} pending: ${message}`,
+        completed: false,
+      };
+    }
   }
 
   return {

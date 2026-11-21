@@ -1,4 +1,4 @@
-export type ConnectorKey = "github" | "linear" | "slack";
+export type ConnectorKey = "github" | "cursor" | "linear" | "slack";
 
 export type ConnectorDefinition = {
   key: ConnectorKey;
@@ -20,7 +20,17 @@ export const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
     category: "Source control",
     available: true,
     href: "/app/connectors/github",
-    actions: ["OAuth account connect", "Open draft pull requests"],
+    actions: ["OAuth account connect", "Open draft pull requests", "Merge PRs"],
+  },
+  {
+    key: "cursor",
+    name: "Cursor",
+    description:
+      "Store a Cursor API key so Cloud Agents can implement approved specs against your GitHub repos.",
+    category: "Coding agents",
+    available: true,
+    href: "/app/connectors/cursor",
+    actions: ["API key", "Launch Cloud Agents", "Open PRs"],
   },
   {
     key: "linear",

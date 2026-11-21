@@ -14,6 +14,7 @@ export type ScriptRunInput = {
 
 export type ScriptRunResult = {
   ok: boolean;
-  outcome: "success" | "failure";
+  /** success/failure transition; pending keeps the work item on the current stage. */
+  outcome: "success" | "failure" | "pending";
   summary: string;
 };

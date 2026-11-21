@@ -82,6 +82,8 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 | `GITHUB_OAUTH_REDIRECT_URI` | Optional callback URL override |
 | `CONNECTOR_TOKEN_SECRET` | Encrypts stored OAuth tokens (optional; falls back to client secret) |
 | `CONSOL_GITHUB_DRY_RUN` | Force dry-run PR opens (`1`) even when OAuth is connected |
+| `CURSOR_API_KEY` | Optional env fallback for Cursor Cloud Agents |
+| `CONSOL_CURSOR_DRY_RUN` | Force dry-run Cursor builds (`1`) even when a key is set |
 
 ### GitHub
 
@@ -92,6 +94,14 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 3. Optionally link a default repository to a product on the same page.
 4. Attach **Software delivery** and run **Open pull request** on a work item.
 5. Without an OAuth connection, Consol records a dry-run PR link.
+
+### Cursor Cloud Agents
+
+1. Open **Connectors** → **Cursor** and paste a Cursor API key (Dashboard → API Keys), or set `CURSOR_API_KEY`.
+2. Bind a product repo under **Connectors** → **GitHub** (demo default: `leaguesports/landing-page`).
+3. From **Home** chat, ask Forge to ship a LeagueSports feature and confirm start.
+4. Approve the spec — Consol launches a Cloud Agent, opens a PR, validates checks, then waits for ship approval before merging.
+5. Without a Cursor key (or with `CONSOL_CURSOR_DRY_RUN=1`), builds run in dry-run mode.
 
 Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `cursor-app.json` declares a Postgres database. For Railway testing, prefer `npm run db:railway-env`.
 
