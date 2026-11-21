@@ -72,11 +72,11 @@ export function DeliveryOverview({ productId, processId, stages, rows }: Props) 
                 >
                   <span className="mt-0.5 text-[var(--console-muted)]">
                     {row.item.status === "done" ? (
-                      <CheckCircle2 className="size-4 text-emerald-600" />
+                      <CheckCircle2 className="size-4 text-[var(--console-accent)]" />
                     ) : active ? (
                       <Loader2 className="size-4 animate-spin text-[var(--console-accent)]" />
                     ) : row.stage?.stage_type === "human" ? (
-                      <Circle className="size-4 text-[var(--console-accent)]" />
+                      <Circle className="size-4 text-amber-500" />
                     ) : (
                       <Bot className="size-4" />
                     )}
@@ -104,9 +104,9 @@ export function DeliveryOverview({ productId, processId, stages, rows }: Props) 
                     className={cn(
                       "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium",
                       row.item.status === "done"
-                        ? "bg-emerald-50 text-emerald-700"
+                        ? "bg-[var(--console-accent-soft)] text-[var(--console-accent)]"
                         : row.stage?.stage_type === "human"
-                          ? "bg-[var(--console-accent-soft)] text-[var(--console-accent)]"
+                          ? "bg-amber-50 text-amber-700"
                           : "bg-[var(--console-panel)] text-[var(--console-muted)]",
                     )}
                   >
