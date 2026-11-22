@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, GitBranch } from "lucide-react";
 import { DeliveryOverview } from "@/components/delivery-overview";
-import { DeliveryPoller } from "@/components/delivery-poller";
+import { LiveRefresh } from "@/components/live-refresh";
 import { IssueFocus } from "@/components/issue-focus";
 import { IssueList } from "@/components/issue-list";
 import { ProcessBoard } from "@/components/process-board";
@@ -24,6 +24,7 @@ import {
 } from "@/lib/factory";
 import { getFlow } from "@/lib/flows";
 import { listAgentRunsForWorkItem } from "@/lib/integrations/agent-runs";
+import { workActivity } from "@/lib/jobs/queue";
 import { listWorkItemExternalLinks } from "@/lib/integrations";
 import { attentionCounts } from "@/lib/issues/attention";
 
@@ -69,12 +70,13 @@ export default async function ProcessPage({
     selected && selected.process_id === process.id ? selected : null;
 
   if (selectedSafe) {
-    const [itemMessages, runEvents, externalLinks, agentRuns] =
+    const [itemMessages, runEvents, externalLinks, agentRuns, activity] =
       await Promise.all([
         listMessages({ workItemId: selectedSafe.id }),
         listStageRunEvents(selectedSafe.id),
         listWorkItemExternalLinks(selectedSafe.id),
         listAgentRunsForWorkItem(selectedSafe.id),
+        workActivity({ workItemId: selectedSafe.id }),
       ]);
 
     return (
@@ -102,6 +104,7 @@ export default async function ProcessPage({
             messages={itemMessages}
             externalLinks={externalLinks}
             agentRuns={agentRuns}
+            activity={activity}
             returnView={view}
           />
         </div>
@@ -133,6 +136,7 @@ export default async function ProcessPage({
       )
     : [];
 
+  const processActivity = await workActivity({ processId: process.id });
   const hasActiveBuilds = overviewRows.some(
     (row) =>
       row.agentRun &&
@@ -143,9 +147,10 @@ export default async function ProcessPage({
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-5 px-5 py-6 md:px-8 md:py-8">
-      <DeliveryPoller
-        organizationId={product.organization_id}
-        active={hasActiveBuilds}
+      <LiveRefresh
+        processId={process.id}
+        active={hasActiveBuilds || processActivity.active}
+        stamp={processActivity.stamp}
       />
       <div className="animate-rise">
         <Link

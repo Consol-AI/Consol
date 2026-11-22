@@ -1,4 +1,4 @@
-import { advanceWorkItem } from "@/lib/flows/runtime";
+import { queueCurrentStage } from "@/lib/flows/runtime";
 import {
   addProcessFromTemplate,
   createProduct,
@@ -157,11 +157,9 @@ export async function startSoftwareDelivery(
 
   let specSummary: string | undefined;
   if (input.runSpec !== false) {
-    const result = await advanceWorkItem({
+    const result = await queueCurrentStage({
       itemId: item.id,
-      outcome: "default",
       actorSub: input.actorSub,
-      execute: true,
     });
     item = result.item;
     specSummary = result.summary;

@@ -1,6 +1,7 @@
 import { invokeAgent } from "@/lib/agents";
 import type { AgentToolName } from "@/lib/agents/types";
 import { runFlowScript } from "@/lib/flows/scripts";
+import { enqueueStageExecution } from "@/lib/jobs/enqueue";
 import {
   resolveTransition,
   targetStageKeyForOutcome,
@@ -176,6 +177,42 @@ export async function runScriptStage(input: {
   return { outcome: result.outcome, summary: result.summary };
 }
 
+/**
+ * Queue the item's current agent/script stage for the worker. Returns
+ * immediately; progress shows up as stage run events and messages.
+ */
+export async function queueCurrentStage(input: {
+  itemId: string;
+  actorSub: string;
+}): Promise<AdvanceResult> {
+  const item = await getWorkItem(input.itemId);
+  if (!item) throw new Error("Item not found");
+  const stage = (await listStages(item.process_id)).find(
+    (s) => s.id === item.stage_id,
+  );
+  if (!stage) throw new Error("Current stage not found");
+  if (stage.stage_type === "human") {
+    throw new Error("Human stages require approve/reject, not execute");
+  }
+  const stageKey = stage.stage_key || stage.id;
+  const job = await enqueueStageExecution({
+    itemId: item.id,
+    stageId: stage.id,
+    actorSub: input.actorSub,
+  });
+  return {
+    item,
+    fromStageKey: stageKey,
+    toStageKey: stageKey,
+    outcome: "pending",
+    summary: job
+      ? `${stage.name} queued — the worker will pick it up shortly.`
+      : `${stage.name} is already running.`,
+    completed: false,
+    pending: true,
+  };
+}
+
 export async function advanceWorkItem(input: {
   itemId: string;
   outcome: AdvanceOutcome;
@@ -302,7 +339,7 @@ export async function advanceWorkItem(input: {
     await setWorkItemStatus(item.id, "open");
   }
 
-  // After human approval into an automated script stage, kick it immediately
+  // After human approval into an automated script stage, queue it immediately
   // (spec-approve → build launches Cursor; ship-approve → merge closes the PR).
   if (
     !input.execute &&
@@ -311,25 +348,19 @@ export async function advanceWorkItem(input: {
     nextStage.stage_type === "script" &&
     (nextStage.stage_key === "merge" || nextStage.stage_key === "build")
   ) {
-    try {
-      return await advanceWorkItem({
-        itemId: item.id,
-        outcome: "default",
-        actorSub: input.actorSub,
-        execute: true,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Follow-up stage failed";
-      return {
-        item: (await getWorkItem(item.id))!,
-        fromStageKey: stageKey,
-        toStageKey: edge.to_stage_key,
-        outcome,
-        summary: `${summary || `Moved to ${nextStage.name}.`} ${nextStage.name} pending: ${message}`,
-        completed: false,
-      };
-    }
+    await enqueueStageExecution({
+      itemId: item.id,
+      stageId: nextStage.id,
+      actorSub: input.actorSub,
+    });
+    return {
+      item: (await getWorkItem(item.id))!,
+      fromStageKey: stageKey,
+      toStageKey: edge.to_stage_key,
+      outcome,
+      summary: `${summary || `Moved to ${nextStage.name}.`} ${nextStage.name} queued.`,
+      completed: false,
+    };
   }
 
   return {

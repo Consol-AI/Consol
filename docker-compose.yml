@@ -1,0 +1,62 @@
+# Self-host Consol: Postgres + web + worker.
+#   cp .env.example .env   # optional: add GitHub / Cursor / model keys
+#   docker compose up --build
+# Then open http://localhost:3000
+x-app: &app
+  build: .
+  image: consol:local
+  env_file:
+    - path: .env
+      required: false
+  environment: &app-env
+    DATABASE_URL: postgres://consol:consol@postgres:5432/consol
+    DATABASE_URL_UNPOOLED: postgres://consol:consol@postgres:5432/consol
+    DATABASE_SSL: "0"
+    CONSOL_WORKER: "off"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: consol
+      POSTGRES_PASSWORD: consol
+      POSTGRES_DB: consol
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U consol -d consol"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *app
+    command: ["npm", "run", "db:migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    <<: *app
+    command: ["npm", "run", "start:web"]
+    ports:
+      - "${CONSOL_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *app
+    command: ["npm", "run", "worker"]
+    environment:
+      <<: *app-env
+      WORKER_CONCURRENCY: "4"
+    restart: unless-stopped
+    stop_grace_period: 60s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

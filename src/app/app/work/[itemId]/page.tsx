@@ -12,6 +12,8 @@ import {
 } from "@/lib/factory";
 import { getFlow } from "@/lib/flows";
 import { listWorkItemExternalLinks } from "@/lib/integrations";
+import { listAgentRunsForWorkItem } from "@/lib/integrations/agent-runs";
+import { workActivity } from "@/lib/jobs/queue";
 
 export default async function WorkItemPage({
   params,
@@ -28,14 +30,23 @@ export default async function WorkItemPage({
   const process = await assertProcessAccess(item.process_id, viewer.sub);
   if (!process) notFound();
 
-  const [stages, transitions, itemMessages, runEvents, externalLinks] =
-    await Promise.all([
-      listStages(process.id),
-      listStageTransitions(process.id),
-      listMessages({ workItemId: item.id }),
-      listStageRunEvents(item.id),
-      listWorkItemExternalLinks(item.id),
-    ]);
+  const [
+    stages,
+    transitions,
+    itemMessages,
+    runEvents,
+    externalLinks,
+    agentRuns,
+    activity,
+  ] = await Promise.all([
+    listStages(process.id),
+    listStageTransitions(process.id),
+    listMessages({ workItemId: item.id }),
+    listStageRunEvents(item.id),
+    listWorkItemExternalLinks(item.id),
+    listAgentRunsForWorkItem(item.id),
+    workActivity({ workItemId: item.id }),
+  ]);
 
   const flowBacked =
     transitions.length > 0 &&
@@ -64,6 +75,8 @@ export default async function WorkItemPage({
         runEvents={runEvents}
         messages={itemMessages}
         externalLinks={externalLinks}
+        agentRuns={agentRuns}
+        activity={activity}
         backHref="/app/work"
         flowInputs={flow?.inputs ?? []}
       />

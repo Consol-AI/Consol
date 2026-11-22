@@ -6,6 +6,8 @@
     "dev": "next dev --port 43123 --hostname 127.0.0.1",
     "build": "next build && node scripts/migrate.mjs",
     "start": "next start",
+    "start:web": "next start -H 0.0.0.0",
+    "worker": "tsx src/worker.ts",
     "lint": "eslint",
     "agents:serve": "node scripts/agents-serve.mjs",
     "db:migrate": "node scripts/migrate.mjs",
@@ -13,7 +15,8 @@
     "smoke:github": "tsx scripts/smoke-github-integration.ts",
     "smoke:github-flow": "tsx scripts/smoke-github-flow.ts",
     "smoke:sdlc": "tsx scripts/smoke-sdlc-flow.ts",
-    "smoke:work-flow": "tsx scripts/smoke-work-flow.ts"
+    "smoke:work-flow": "tsx scripts/smoke-work-flow.ts",
+    "smoke:worker": "tsx scripts/smoke-worker.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.121",

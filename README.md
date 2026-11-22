@@ -30,6 +30,42 @@ Without secrets, Consol uses:
 - **mock AI replies** when no model key is set
 - a **file registry** for agent teammates at `data/teammates.json`
 
+### Background worker
+
+Agent stages, script stages and external agent polling (Cursor) run as **jobs** in Postgres (`jobs` table), not inside web requests. A worker claims them with `FOR UPDATE SKIP LOCKED`, so you can run as many workers as you like.
+
+- **Local dev with PGlite** (no `DATABASE_URL`): the worker starts inline inside `next dev` via `src/instrumentation.ts`. Nothing extra to run.
+- **With Postgres**: run the web app and the worker as separate processes:
+
+```bash
+CONSOL_WORKER=off npm run dev   # web only
+npm run worker                  # separate terminal
+```
+
+`CONSOL_WORKER=inline` forces the worker into the web process even with Postgres (handy for a single-container deploy). `npm run smoke:worker` checks the queue end to end.
+
+### Self-host with Docker
+
+One image runs every role (web, worker, migrate):
+
+```bash
+cp .env.example .env   # optional: GitHub / Cursor / model keys
+docker compose up --build
+```
+
+Open [http://localhost:3000](http://localhost:3000). Compose starts Postgres, applies migrations, then starts `web` and `worker`.
+
+### Hosted on Railway
+
+Create two services from this repo, both built from the `Dockerfile`, and point each at its config file (Service → Settings → Config-as-code):
+
+| Service | Config file | Runs |
+| --- | --- | --- |
+| `web` | `deploy/railway/web.json` | `npm run start:web`, migrations as pre-deploy, health check at `/api/health` |
+| `worker` | `deploy/railway/worker.json` | `npm run worker` (scale with replicas) |
+
+Give both services the same variables: `DATABASE_URL` (reference the Railway Postgres), `CONNECTOR_TOKEN_SECRET`, model keys, GitHub/Cursor credentials. Set `CONSOL_WORKER=off` on `web`.
+
 ### Railway Postgres (testing)
 
 A cheap Hobby Postgres lives in the Railway project **consol** (sleep enabled, 0.5 vCPU / 0.5 GB). Use it instead of PGlite when you want a shared durable DB:
@@ -72,6 +108,8 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 | Variable | Purpose |
 | --- | --- |
 | `CONSOL_DEMO_AUTH` | Enable local demo viewer (`1`) |
+| `CONSOL_WORKER` | `inline` runs jobs inside the web process, `off` leaves them to `npm run worker` (default: inline only without `DATABASE_URL`) |
+| `WORKER_CONCURRENCY` | Jobs one worker process runs at once (default `4`) |
 | `DATABASE_URL` | Postgres connection (Railway for testing, or Cursor Apps when published) |
 | `DATABASE_URL_UNPOOLED` | Direct Postgres URL for migrations |
 | `DATABASE_SSL` | Set `0` to accept Railway’s self-signed public proxy cert |

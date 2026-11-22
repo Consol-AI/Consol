@@ -8,9 +8,8 @@ import {
   updateWorkItem,
 } from "@/lib/factory";
 import { advanceWorkItem } from "@/lib/flows/runtime";
+import { enqueueStageExecution } from "@/lib/jobs/enqueue";
 import {
-  listActiveAgentRuns,
-  listAgentRunsForWorkItem,
   updateAgentRun,
   type AgentRun,
 } from "@/lib/integrations/agent-runs";
@@ -233,19 +232,13 @@ export async function pollAgentRun(
       },
     });
 
-    // Kick validate once the PR exists (may return pending while checks run).
+    // Queue validate once the PR exists (re-checks while CI runs).
     if (advanced && advance.toStageKey === "validate") {
-      try {
-        const validated = await advanceWorkItem({
-          itemId: item.id,
-          outcome: "default",
-          actorSub,
-          execute: true,
-        });
-        summary = validated.summary || summary;
-      } catch {
-        // Leave on validate for manual re-run.
-      }
+      await enqueueStageExecution({
+        itemId: item.id,
+        stageId: advance.item.stage_id,
+        actorSub,
+      });
     }
   } else if (onBuild && !prUrl) {
     await addStageRunEvent({
@@ -262,33 +255,4 @@ export async function pollAgentRun(
   }
 
   return { run: updated, changed: true, advanced, summary };
-}
-
-export async function pollWorkItemAgentRuns(
-  workItemId: string,
-  actorSub = "system",
-): Promise<PollAgentRunResult[]> {
-  const runs = await listAgentRunsForWorkItem(workItemId);
-  const active = runs.filter((r) =>
-    ["PENDING", "CREATING", "RUNNING", "WAITING_FOR_BACKGROUND_WORK"].includes(
-      r.status.toUpperCase(),
-    ),
-  );
-  // Also re-check recently finished dry runs that may need advance — skip.
-  const results: PollAgentRunResult[] = [];
-  for (const run of active) {
-    results.push(await pollAgentRun(run, actorSub));
-  }
-  return results;
-}
-
-export async function pollAllActiveAgentRuns(
-  actorSub = "system",
-): Promise<PollAgentRunResult[]> {
-  const runs = await listActiveAgentRuns();
-  const results: PollAgentRunResult[] = [];
-  for (const run of runs) {
-    results.push(await pollAgentRun(run, actorSub));
-  }
-  return results;
 }
