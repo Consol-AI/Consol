@@ -125,7 +125,7 @@ export async function POST(request: Request) {
           "",
           `**${started.item.title}**`,
           started.specSummary
-            ? `Spec draft ready — ${started.specSummary}`
+            ? `Drafting the spec now — ${started.specSummary}`
             : "Work item created at Spec.",
           "",
           `Open it: ${started.href}`,

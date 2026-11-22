@@ -21,7 +21,7 @@ import {
   updateWorkItemAction,
 } from "@/app/actions";
 import { AiPanel } from "@/components/ai-panel";
-import { DeliveryPoller } from "@/components/delivery-poller";
+import { LiveRefresh } from "@/components/live-refresh";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,8 @@ type Props = {
   returnView?: ProcessViewMode;
   backHref?: string;
   flowInputs?: { key: string; label: string }[];
+  /** Background-work marker from the server render (see /api/work/activity). */
+  activity?: { stamp: string; active: boolean };
 };
 
 export function IssueFocus({
@@ -77,6 +79,7 @@ export function IssueFocus({
   returnView = "list",
   backHref: backHrefProp,
   flowInputs = [],
+  activity = { stamp: "", active: false },
 }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(item.title);
@@ -95,12 +98,13 @@ export function IssueFocus({
   const currentMeta = stageMeta(current?.stage_type ?? "legacy");
   const latestAgentRun = agentRuns[0] ?? null;
   const pollActive =
-    item.status !== "done" &&
+    activity.active ||
+    (item.status !== "done" &&
     Boolean(
       (latestAgentRun && isActiveAgentRunStatus(latestAgentRun.status)) ||
         current?.stage_key === "build" ||
         current?.stage_key === "validate",
-    );
+    ));
   const backHref =
     backHrefProp ??
     (productId
@@ -186,7 +190,11 @@ export function IssueFocus({
 
   return (
     <div className="space-y-5">
-      <DeliveryPoller workItemId={item.id} active={pollActive} />
+      <LiveRefresh
+        workItemId={item.id}
+        active={pollActive}
+        stamp={activity.stamp}
+      />
       <div>
         <Link
           href={backHref}

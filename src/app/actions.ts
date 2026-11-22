@@ -10,6 +10,7 @@ import {
 } from "@/lib/flows";
 import {
   advanceWorkItem,
+  queueCurrentStage,
   type AdvanceOutcome,
 } from "@/lib/flows/runtime";
 import {
@@ -231,12 +232,14 @@ export async function advanceWorkItemAction(formData: FormData) {
   const process = await assertProcessAccess(item.process_id, viewer.sub);
   if (!process) throw new Error("Forbidden");
 
-  const result = await advanceWorkItem({
-    itemId,
-    outcome,
-    actorSub: viewer.sub,
-    execute,
-  });
+  const result = execute
+    ? await queueCurrentStage({ itemId, actorSub: viewer.sub })
+    : await advanceWorkItem({
+        itemId,
+        outcome,
+        actorSub: viewer.sub,
+        execute: false,
+      });
   revalidateWorkPaths({
     processId: process.id,
     productId: process.product_id,
