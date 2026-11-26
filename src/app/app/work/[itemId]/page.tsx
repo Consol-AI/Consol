@@ -13,7 +13,7 @@ import {
 import { getFlow } from "@/lib/flows";
 import { listWorkItemExternalLinks } from "@/lib/integrations";
 import { listAgentRunsForWorkItem } from "@/lib/integrations/agent-runs";
-import { workActivity } from "@/lib/jobs/queue";
+import { workActivity, workItemJobState } from "@/lib/jobs/queue";
 
 export default async function WorkItemPage({
   params,
@@ -38,6 +38,7 @@ export default async function WorkItemPage({
     externalLinks,
     agentRuns,
     activity,
+    jobState,
   ] = await Promise.all([
     listStages(process.id),
     listStageTransitions(process.id),
@@ -46,6 +47,7 @@ export default async function WorkItemPage({
     listWorkItemExternalLinks(item.id),
     listAgentRunsForWorkItem(item.id),
     workActivity({ workItemId: item.id }),
+    workItemJobState(item.id),
   ]);
 
   const flowBacked =
@@ -76,7 +78,7 @@ export default async function WorkItemPage({
         externalLinks={externalLinks}
         agentRuns={agentRuns}
         activity={activity}
-        backHref="/app/work"
+        jobState={jobState}
         flowInputs={flow?.inputs ?? []}
       />
     </div>

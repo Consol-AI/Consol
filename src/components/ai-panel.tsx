@@ -4,9 +4,36 @@ import { useState, useTransition } from "react";
 import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Markdown } from "@/components/markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Message } from "@/lib/factory";
 import { cn } from "@/lib/utils";
+
+/** Long agent drafts get clamped so the thread stays scannable. */
+function CollapsibleMarkdown({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
+  const long = content.length > 600;
+  return (
+    <div>
+      <div
+        className={cn(
+          long && !open && "max-h-40 overflow-hidden [mask-image:linear-gradient(to_bottom,black_60%,transparent)]",
+        )}
+      >
+        <Markdown>{content}</Markdown>
+      </div>
+      {long ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mt-1 text-[11px] font-medium text-[var(--console-accent)] hover:underline"
+        >
+          {open ? "Show less" : "Show more"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 type Props = {
   processId: string;
@@ -142,7 +169,7 @@ export function AiPanel({
           </p>
         </div>
       )}
-      <ScrollArea className="flex-1 px-4 py-3">
+      <ScrollArea className="min-h-0 flex-1 px-4 py-3">
         <div className="space-y-2.5">
           {messages.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[var(--console-line)] bg-[var(--console-panel)]/60 px-3 py-6 text-center">
@@ -168,12 +195,16 @@ export function AiPanel({
                   {m.role === "assistant"
                     ? "Forge AI"
                     : m.role === "system"
-                      ? "Flow"
+                      ? m.author_name || "Flow"
                       : m.author_name || "Teammate"}
                 </p>
-                <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--console-ink)]">
-                  {m.content}
-                </p>
+                {m.role === "user" ? (
+                  <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--console-ink)]">
+                    {m.content}
+                  </p>
+                ) : (
+                  <CollapsibleMarkdown content={m.content} />
+                )}
               </div>
             ))
           )}

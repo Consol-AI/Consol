@@ -1,5 +1,6 @@
 "use client";
 
+import { Markdown } from "@/components/markdown";
 import Link from "next/link";
 import { LiveDot } from "@/components/live-dot";
 import { useState, useTransition } from "react";
@@ -270,7 +271,11 @@ export function HomeChat({
                   <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] opacity-60">
                     {m.role === "user" ? "You" : "Forge"}
                   </p>
-                  <div className="whitespace-pre-wrap">{m.content}</div>
+                  {m.role === "user" ? (
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  ) : (
+                    <Markdown>{m.content}</Markdown>
+                  )}
                 </div>
               ))}
             </div>
