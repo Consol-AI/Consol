@@ -37,8 +37,9 @@ export default async function CursorConnectorPage() {
           Cursor
         </h1>
         <p className="mt-1 max-w-xl text-[13px] text-[var(--console-muted)]">
-          Connect a Cursor API key so the Build stage can launch Cloud Agents
-          against your product&apos;s GitHub repository.
+          The Build stage launches Cursor Cloud Agents against the work
+          item&apos;s GitHub repository. Set CURSOR_API_KEY in .env.local, or
+          paste a key below.
         </p>
       </div>
 

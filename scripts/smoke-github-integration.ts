@@ -13,9 +13,8 @@ import { createId } from "../src/lib/id";
 import { sql } from "../src/lib/db";
 import {
   createGithubPullRequest,
-  getGithubConfigForProduct,
   githubHeadBranchName,
-  upsertGithubIntegration,
+  resolveRepo,
 } from "../src/lib/integrations";
 import {
   getOrganizationAccessToken,
@@ -27,7 +26,7 @@ import {
   parseOauthState,
 } from "../src/lib/integrations/github/oauth";
 import { runOpenPullRequest } from "../src/lib/flows/scripts/open-pr";
-import { addProcessFromTemplate, createWorkItem, listStages } from "../src/lib/factory";
+import { createWorkItem, ensureOrgProcess, listStages } from "../src/lib/factory";
 
 async function main() {
   const state = createOauthState({
@@ -64,19 +63,13 @@ async function main() {
   console.log("ok: head branch", head);
 
   const orgId = createId("org");
-  const productId = createId("prd");
   const slug = `smoke-${orgId.slice(-8)}`;
   await sql(
     `insert into organizations (id, name, slug, created_by) values ($1, $2, $3, $4)`,
     [orgId, "Smoke Org", slug, "smoke"],
   );
-  await sql(
-    `insert into products (id, organization_id, name, description, created_by)
-     values ($1, $2, $3, $4, $5)`,
-    [productId, orgId, "Smoke Product", "", "smoke"],
-  );
 
-  // Workspace OAuth connection does not require a product.
+  // Workspace OAuth connection.
   await upsertOrganizationConnection({
     organizationId: orgId,
     provider: "github",
@@ -98,24 +91,16 @@ async function main() {
   if (token !== "gho_smoke_token") {
     throw new Error(`Unexpected decrypted token: ${token}`);
   }
-  console.log("ok: org OAuth connection without product", connection.account_login);
+  console.log("ok: org OAuth connection", connection.account_login);
 
-  await upsertGithubIntegration({
-    productId,
-    owner: "acme",
-    repo: "widget",
-    baseBranch: "develop",
-    headBranchPrefix: "consol/",
-    createdBy: "smoke",
-  });
-  const config = await getGithubConfigForProduct(productId);
+  const config = await resolveRepo({ repo: "acme/widget" });
   if (!config || config.owner !== "acme" || config.repo !== "widget") {
     throw new Error(`Unexpected config: ${JSON.stringify(config)}`);
   }
-  console.log("ok: upsertGithubIntegration", config);
+  console.log("ok: resolveRepo from item input", config);
 
-  const deliveryProcess = await addProcessFromTemplate({
-    productId,
+  const deliveryProcess = await ensureOrgProcess({
+    organizationId: orgId,
     templateKey: "software-delivery",
     createdBy: "smoke",
   });
@@ -141,6 +126,7 @@ async function main() {
     stageId: build.id,
     title: "Ship GitHub open PR",
     body: "Acceptance criteria: open a draft PR.\nImplementation plan: change files.",
+    inputs: { repo: "acme/widget" },
     createdBy: "smoke",
   });
 
@@ -148,7 +134,8 @@ async function main() {
     title: item.title,
     body: item.body,
     stageKey: "open-pr",
-    productId,
+    inputs: item.inputs,
+    organizationId: orgId,
     processId: deliveryProcess.id,
     workItemId: item.id,
     actorSub: "smoke",

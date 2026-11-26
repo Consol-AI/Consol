@@ -132,6 +132,15 @@
   }
 }
 
+@keyframes now-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
 .animate-rise {
   animation: rise-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

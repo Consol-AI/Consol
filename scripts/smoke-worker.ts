@@ -98,7 +98,11 @@ async function main() {
   console.log("worker smoke: ok");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+// PGlite keeps the event loop alive; exit explicitly once checks pass.
+main().then(
+  () => process.exit(0),
+  (error) => {
+    console.error(error);
+    process.exit(1);
+  },
+);

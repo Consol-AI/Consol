@@ -5,7 +5,7 @@ export const softwareDeliveryFlow: FlowDefinition = {
   name: "Software delivery",
   domain: "engineering",
   description:
-    "Spec, approve, Cursor Cloud Agent build, validate checks, approve, and merge — with reject loops back to build.",
+    "Spec, approve, coding agent build, validate checks, approve, and merge — with reject loops back to build.",
   entry: "spec",
   inputs: [
     {
@@ -23,11 +23,11 @@ export const softwareDeliveryFlow: FlowDefinition = {
       placeholder: "User-facing outcome and why it matters",
     },
     {
-      key: "repo_context",
-      label: "Repo / area",
+      key: "repo",
+      label: "Repository",
       type: "string",
       required: false,
-      placeholder: "owner/repo or package path",
+      placeholder: "owner/repo — blank uses this checkout's GitHub origin",
     },
     {
       key: "acceptance",
@@ -60,8 +60,10 @@ export const softwareDeliveryFlow: FlowDefinition = {
       id: "build",
       type: "script",
       name: "Build",
-      description: "Cursor Cloud Agent implements the change and opens a PR.",
-      path: "cursor-build",
+      description:
+        "A coding agent (Cursor Cloud Agent, or Claude Code locally) implements the change and opens a PR.",
+      path: "coding-agent",
+      agent: "auto",
     },
     {
       id: "validate",

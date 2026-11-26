@@ -143,9 +143,6 @@ export function WorkJobsList({ items }: { items: OrganizationWorkItem[] }) {
                               </p>
                               <p className="mt-1 text-[12px] text-[var(--console-muted)]">
                                 {item.process_name}
-                                {item.product_name
-                                  ? ` · ${item.product_name}`
-                                  : ""}
                               </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">

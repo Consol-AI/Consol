@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Teammate agents are separate projects with their own deps/tsconfig.
+    "agents/**",
   ]),
 ]);
 

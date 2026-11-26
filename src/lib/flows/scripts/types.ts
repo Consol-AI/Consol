@@ -3,10 +3,12 @@ export type ScriptRunInput = {
   body: string;
   stageKey: string;
   inline?: string;
+  /** The stage's config (e.g. `agent` for the coding-agent script). */
+  config?: Record<string, unknown>;
   /** Structured start-form context from the work item. */
   inputs?: Record<string, string>;
   /** Optional execution context for integration scripts. */
-  productId?: string;
+  organizationId?: string;
   processId?: string;
   workItemId?: string;
   actorSub?: string;

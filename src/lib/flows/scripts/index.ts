@@ -1,6 +1,6 @@
 import { runMergePullRequest } from "@/lib/flows/scripts/merge-pr";
 import { runOpenPullRequest } from "@/lib/flows/scripts/open-pr";
-import { runCursorBuild } from "@/lib/flows/scripts/run-cursor-build";
+import { runCodingAgentBuild } from "@/lib/flows/scripts/run-coding-agent";
 import { runValidateEvidence } from "@/lib/flows/scripts/validate-evidence";
 import { runValidatePrChecks } from "@/lib/flows/scripts/validate-pr-checks";
 import { runVerifyDelivery } from "@/lib/flows/scripts/verify-delivery";
@@ -13,7 +13,9 @@ const SCRIPT_RUNNERS: Record<
   "verify-delivery": runVerifyDelivery,
   "validate-evidence": runValidateEvidence,
   "open-pr": runOpenPullRequest,
-  "cursor-build": runCursorBuild,
+  "coding-agent": runCodingAgentBuild,
+  /** Legacy path key; existing stages still point here. */
+  "cursor-build": runCodingAgentBuild,
   "validate-pr-checks": runValidatePrChecks,
   "merge-pr": runMergePullRequest,
 };
@@ -44,11 +46,12 @@ function runInline(input: ScriptRunInput): ScriptRunResult {
 export async function runFlowScript(input: {
   path?: string;
   inline?: string;
+  config?: Record<string, unknown>;
   title: string;
   body: string;
   inputs?: Record<string, string>;
   stageKey: string;
-  productId?: string;
+  organizationId?: string;
   processId?: string;
   workItemId?: string;
   actorSub?: string;
@@ -59,7 +62,8 @@ export async function runFlowScript(input: {
     inputs: input.inputs,
     stageKey: input.stageKey,
     inline: input.inline,
-    productId: input.productId,
+    config: input.config,
+    organizationId: input.organizationId,
     processId: input.processId,
     workItemId: input.workItemId,
     actorSub: input.actorSub,

@@ -1,5 +1,6 @@
 "use client";
 
+import { Markdown } from "@/components/markdown";
 import Link from "next/link";
 import { LiveDot } from "@/components/live-dot";
 import { useState, useTransition } from "react";
@@ -19,10 +20,17 @@ import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
   "What needs my decision today?",
-  "Ship a feature on LeagueSports: add a subtle footer changelog link",
-  "Summarize open work across projects",
+  "Ship: add a subtle footer changelog link",
+  "Summarize open work across flows",
   "Help me prioritize what to ship next",
 ] as const;
+
+let tempMessageSeq = 0;
+/** Client-only id for optimistic messages until the server echoes them. */
+function tempMessageId(prefix: string): string {
+  tempMessageSeq += 1;
+  return `${prefix}_${tempMessageSeq}`;
+}
 
 type Props = {
   organizationId: string;
@@ -31,7 +39,6 @@ type Props = {
   attention: WorkspaceAttentionItem[];
   needsYou: number;
   agentsWorking: number;
-  productCount: number;
 };
 
 export function HomeChat({
@@ -41,7 +48,6 @@ export function HomeChat({
   attention,
   needsYou,
   agentsWorking,
-  productCount,
 }: Props) {
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
@@ -50,6 +56,7 @@ export function HomeChat({
   const [deliveryConfirm, setDeliveryConfirm] = useState<{
     title: string;
     body: string;
+    repo: string | null;
   } | null>(null);
   const [lastDeliveryHref, setLastDeliveryHref] = useState<string | null>(null);
 
@@ -59,6 +66,7 @@ export function HomeChat({
       confirmDelivery?: boolean;
       deliveryTitle?: string;
       deliveryBody?: string;
+      deliveryRepo?: string | null;
     },
   ) {
     const content = (contentOverride ?? draft).trim();
@@ -66,7 +74,7 @@ export function HomeChat({
     setError(null);
     setDraft("");
     const optimistic: Message = {
-      id: `tmp_${Date.now()}`,
+      id: tempMessageId("tmp"),
       organization_id: organizationId,
       process_id: null,
       work_item_id: null,
@@ -89,6 +97,7 @@ export function HomeChat({
             confirmDelivery: options?.confirmDelivery,
             deliveryTitle: options?.deliveryTitle,
             deliveryBody: options?.deliveryBody,
+            deliveryRepo: options?.deliveryRepo ?? undefined,
           }),
         });
         if (!res.ok) {
@@ -105,12 +114,14 @@ export function HomeChat({
               href?: string;
               title?: string;
               body?: string;
+              repo?: string | null;
             };
           };
           if (data.delivery?.needsConfirm && data.delivery.title) {
             setDeliveryConfirm({
               title: data.delivery.title,
               body: data.delivery.body || content,
+              repo: data.delivery.repo ?? null,
             });
           } else {
             setDeliveryConfirm(null);
@@ -121,7 +132,7 @@ export function HomeChat({
           setMessages((prev) => [
             ...prev,
             {
-              id: `tmp_ai_${Date.now()}`,
+              id: tempMessageId("tmp_ai"),
               organization_id: organizationId,
               process_id: null,
               work_item_id: null,
@@ -139,7 +150,7 @@ export function HomeChat({
         if (!reader) throw new Error("No stream");
         const decoder = new TextDecoder();
         let text = "";
-        const streamId = `tmp_ai_${Date.now()}`;
+        const streamId = tempMessageId("tmp_ai");
         setMessages((prev) => [
           ...prev,
           {
@@ -198,14 +209,13 @@ export function HomeChat({
         </div>
         <div className="animate-rise-delay hidden shrink-0 items-center gap-3 text-[11px] text-[var(--console-faint)] sm:flex">
           <span>
-            {needsYou} need you · {agentsWorking} agents · {productCount}{" "}
-            project{productCount === 1 ? "" : "s"}
+            {needsYou} need you · {agentsWorking} agents
           </span>
           <Link
-            href="/app/projects"
+            href="/app/work"
             className="inline-flex items-center gap-0.5 font-medium text-[var(--console-accent)] hover:text-[var(--console-accent-hover)]"
           >
-            Projects
+            Work
             <ArrowUpRight className="size-3" aria-hidden />
           </Link>
         </div>
@@ -261,7 +271,11 @@ export function HomeChat({
                   <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] opacity-60">
                     {m.role === "user" ? "You" : "Forge"}
                   </p>
-                  <div className="whitespace-pre-wrap">{m.content}</div>
+                  {m.role === "user" ? (
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  ) : (
+                    <Markdown>{m.content}</Markdown>
+                  )}
                 </div>
               ))}
             </div>
@@ -277,7 +291,11 @@ export function HomeChat({
               {deliveryConfirm ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--console-accent-soft)] px-2.5 py-2 text-[12px] text-[var(--console-accent)]">
                   <span className="min-w-0 flex-1">
-                    Start delivery for <strong>{deliveryConfirm.title}</strong>?
+                    Start delivery for <strong>{deliveryConfirm.title}</strong>
+                    {deliveryConfirm.repo ? (
+                      <> on <code>{deliveryConfirm.repo}</code></>
+                    ) : null}
+                    ?
                   </span>
                   <Button
                     type="button"
@@ -289,6 +307,7 @@ export function HomeChat({
                         confirmDelivery: true,
                         deliveryTitle: deliveryConfirm.title,
                         deliveryBody: deliveryConfirm.body,
+                        deliveryRepo: deliveryConfirm.repo,
                       })
                     }
                   >
@@ -358,22 +377,22 @@ export function HomeChat({
               Needs attention
             </p>
             <p className="mt-0.5 text-[11px] text-[var(--console-faint)]">
-              Decisions and agent work from across projects
+              Decisions and agent work from across flows
             </p>
           </div>
           <ScrollArea className="flex-1">
             {spotlight.length === 0 ? (
               <div className="px-4 py-8 text-center">
                 <p className="text-[12px] text-[var(--console-muted)]">
-                  No open work yet. Create a project to start coordinating.
+                  No open work yet. Start a flow, or ask Forge to ship a change.
                 </p>
-                <Link href="/app/projects" className="mt-3 inline-block">
+                <Link href="/app/work/new" className="mt-3 inline-block">
                   <Button
                     size="sm"
                     variant="outline"
                     className="h-8 rounded-md border-[var(--console-line)] text-[12px]"
                   >
-                    Open projects
+                    Start a flow
                   </Button>
                 </Link>
               </div>
@@ -392,7 +411,7 @@ export function HomeChat({
                           {item.title}
                         </p>
                         <p className="mt-0.5 truncate text-[11px] text-[var(--console-muted)]">
-                          {item.product_name ?? item.process_name} · {item.stage_name}
+                          {item.process_name} · {item.stage_name}
                         </p>
                         <p
                           className={cn(

@@ -103,6 +103,7 @@ export async function runAgentStage(input: {
     agentKey,
     rolePrompt: rolePrompt || undefined,
     allowedTools: allowedTools.length ? allowedTools : undefined,
+    model: asString(config.model) || undefined,
     workItemTitle: input.item.title,
     workItemBody: input.item.body,
     workItemInputs: input.item.inputs,
@@ -156,7 +157,7 @@ export async function runScriptStage(input: {
   item: WorkItem;
   stage: Stage;
   actorSub: string;
-  productId?: string;
+  organizationId?: string;
   signal?: AbortSignal;
 }): Promise<{
   outcome: "success" | "failure" | "pending";
@@ -168,11 +169,12 @@ export async function runScriptStage(input: {
   const result = await runFlowScript({
     path,
     inline,
+    config,
     title: input.item.title,
     body: input.item.body,
     inputs: input.item.inputs,
     stageKey: input.stage.stage_key || input.stage.id,
-    productId: input.productId,
+    organizationId: input.organizationId,
     processId: input.item.process_id,
     workItemId: input.item.id,
     actorSub: input.actorSub,
@@ -318,7 +320,7 @@ export async function advanceWorkItem(input: {
         item: (await getWorkItem(item.id))!,
         stage,
         actorSub: input.actorSub,
-        productId: process.product_id ?? undefined,
+        organizationId: process.organization_id,
         signal: input.signal,
       });
       summary = scriptResult.summary;

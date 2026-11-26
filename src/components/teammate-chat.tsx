@@ -1,5 +1,6 @@
 "use client";
 
+import { Markdown } from "@/components/markdown";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Bot } from "lucide-react";
@@ -156,9 +157,13 @@ export function TeammateChat({
                   ? "You"
                   : `${teammate.name}${m.source === "mock" ? " · mock" : ""}`}
               </p>
-              <div className="whitespace-pre-wrap leading-relaxed">
-                {m.content}
-              </div>
+              {m.role === "user" ? (
+                <div className="whitespace-pre-wrap leading-relaxed">
+                  {m.content}
+                </div>
+              ) : (
+                <Markdown>{m.content}</Markdown>
+              )}
             </div>
           ))}
         </div>

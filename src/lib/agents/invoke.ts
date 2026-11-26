@@ -1,11 +1,10 @@
-import { generateText } from "ai";
 import { getAgent } from "@/lib/agents/registry";
 import type {
   AgentInvokeInput,
   AgentInvokeResult,
   AgentToolName,
 } from "@/lib/agents/types";
-import { getLanguageModel, hasAiKey } from "@/lib/ai";
+import { getTextModel, MOCK_MODEL_HINT } from "@/lib/models";
 import { getTeammateBySlug } from "@/lib/teammates/registry";
 import { runTeammateTurn } from "@/lib/teammates/runtime";
 
@@ -38,7 +37,7 @@ function mockAgentReply(input: AgentInvokeInput, tools: AgentToolName[]): string
     "",
     toolsLine,
     "",
-    "_Sample agent run — connect AI_GATEWAY_API_KEY or OPENAI_API_KEY for live model responses._",
+    MOCK_MODEL_HINT,
   ].join("\n");
 }
 
@@ -107,17 +106,7 @@ export async function invokeAgent(
     .filter(Boolean)
     .join("\n\n");
 
-  if (!hasAiKey()) {
-    return {
-      agentKey: agent.key,
-      agentName: agent.name,
-      content: mockAgentReply(input, toolsUsed),
-      toolsUsed,
-      mock: true,
-    };
-  }
-
-  const model = getLanguageModel();
+  const model = getTextModel(input.model);
   if (!model) {
     return {
       agentKey: agent.key,
@@ -128,17 +117,17 @@ export async function invokeAgent(
     };
   }
 
-  const result = await generateText({
-    model,
+  const content = await model.generate({
     system: rolePrompt,
     prompt: userPrompt,
+    effort: "high",
     abortSignal: input.signal,
   });
 
   return {
     agentKey: agent.key,
     agentName: agent.name,
-    content: result.text.trim(),
+    content,
     toolsUsed,
     mock: false,
   };

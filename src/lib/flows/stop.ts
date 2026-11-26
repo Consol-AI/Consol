@@ -3,7 +3,6 @@ import {
   addMessage,
   addStageRunEvent,
   getProcess,
-  getProduct,
   getWorkItem,
   listStages,
   type WorkItem,
@@ -13,8 +12,7 @@ import {
   listAgentRunsForWorkItem,
   updateAgentRun,
 } from "@/lib/integrations/agent-runs";
-import { stopCursorAgent } from "@/lib/integrations/cursor/client";
-import { getCursorApiKey } from "@/lib/integrations/cursor/credentials";
+import { getCodingAgent } from "@/lib/coding-agents";
 import { cancelJobsForWorkItem } from "@/lib/jobs/queue";
 
 /**
@@ -25,7 +23,7 @@ import { cancelJobsForWorkItem } from "@/lib/jobs/queue";
  *      enqueueJob refuse to move, complete or queue work for it afterwards);
  *   2. queued/running jobs → 'cancelled' (workers notice within ~2s and abort
  *      the handler's AbortSignal, which cancels in-flight model calls);
- *   3. active external agent runs (Cursor) → stop requested remotely
+ *   3. active coding-agent runs (Cursor, Claude Code) → stop requested
  *      (best-effort) and marked CANCELLED locally so polling ends.
  *
  * Delete stops the flow first, then soft-deletes it (deleted_at/by).
@@ -45,11 +43,7 @@ export type StopWorkItemResult = {
 async function organizationIdForProcess(
   processId: string,
 ): Promise<string | null> {
-  const process = await getProcess(processId);
-  if (!process) return null;
-  if (process.organization_id) return process.organization_id;
-  if (!process.product_id) return null;
-  return (await getProduct(process.product_id))?.organization_id ?? null;
+  return (await getProcess(processId))?.organization_id ?? null;
 }
 
 /** Stop every active external agent run for the item. Idempotent. */
@@ -65,23 +59,22 @@ export async function cancelAgentRunsForWorkItem(input: {
   if (!runs.length) return { cancelled: 0, warnings };
 
   const organizationId = await organizationIdForProcess(input.processId);
-  const apiKey = organizationId
-    ? ((await getCursorApiKey(organizationId)) ?? "")
-    : "";
 
   for (const run of runs) {
     let remoteStop = "skipped";
-    if (run.provider === "cursor" && run.external_agent_id) {
+    const agent = getCodingAgent(run.provider);
+    if (agent && run.external_agent_id) {
       try {
-        const result = await stopCursorAgent({
-          apiKey,
-          agentId: run.external_agent_id,
+        const result = await agent.stop({
+          organizationId,
+          externalAgentId: run.external_agent_id,
+          externalRunId: run.external_run_id,
         });
         remoteStop = result.dryRun ? "dry-run" : "requested";
       } catch (error) {
         remoteStop = "failed";
         warnings.push(
-          `Could not stop Cursor agent ${run.external_agent_id}: ${
+          `Could not stop ${agent.name} agent ${run.external_agent_id}: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );

@@ -16,18 +16,8 @@ export type Organization = {
   created_at: string;
 };
 
-export type Product = {
-  id: string;
-  organization_id: string;
-  name: string;
-  description: string;
-  created_by: string;
-  created_at: string;
-};
-
 export type Process = {
   id: string;
-  product_id: string | null;
   organization_id: string;
   name: string;
   domain: string;
@@ -78,6 +68,7 @@ function stageRowConfig(stage: FlowStage): Record<string, unknown> {
       rolePrompt: stage.rolePrompt,
       allowedTools: stage.allowedTools,
       agentKey: stage.agentKey ?? "forge",
+      model: stage.model ?? null,
     };
   }
   if (stage.type === "human") {
@@ -89,6 +80,7 @@ function stageRowConfig(stage: FlowStage): Record<string, unknown> {
   return {
     path: stage.path ?? null,
     inline: stage.inline ?? null,
+    agent: stage.agent ?? null,
   };
 }
 
@@ -133,8 +125,6 @@ export type WorkspaceAttentionItem = {
   process_id: string;
   process_name: string;
   template_key: string;
-  product_id: string | null;
-  product_name: string | null;
   updated_at: string;
 };
 
@@ -270,52 +260,10 @@ export type Member = {
   created_at: string;
 };
 
-export async function listProducts(organizationId: string): Promise<Product[]> {
-  return sql<Product>(
-    `select * from products where organization_id = $1 order by created_at desc`,
-    [organizationId],
-  );
-}
-
 export async function listMembers(organizationId: string): Promise<Member[]> {
   return sql<Member>(
     `select * from memberships where organization_id = $1 order by created_at asc`,
     [organizationId],
-  );
-}
-
-export async function createProduct(input: {
-  organizationId: string;
-  name: string;
-  description: string;
-  createdBy: string;
-}): Promise<Product> {
-  const id = createId("prd");
-  await sql(
-    `insert into products (id, organization_id, name, description, created_by)
-     values ($1, $2, $3, $4, $5)`,
-    [
-      id,
-      input.organizationId,
-      input.name.trim(),
-      input.description.trim(),
-      input.createdBy,
-    ],
-  );
-  return (await sql<Product>(`select * from products where id = $1`, [id]))[0];
-}
-
-export async function getProduct(productId: string): Promise<Product | null> {
-  return (
-    (await sql<Product>(`select * from products where id = $1`, [productId]))[0] ??
-    null
-  );
-}
-
-export async function listProcesses(productId: string): Promise<Process[]> {
-  return sql<Process>(
-    `select * from processes where product_id = $1 order by created_at asc`,
-    [productId],
   );
 }
 
@@ -327,25 +275,7 @@ export async function getProcess(processId: string): Promise<Process | null> {
   );
 }
 
-export async function addProcessFromTemplate(input: {
-  productId: string;
-  templateKey: string;
-  createdBy: string;
-}): Promise<Process> {
-  const flow = getFlow(input.templateKey);
-  if (!flow) throw new Error("Unknown template");
-  const product = await getProduct(input.productId);
-  if (!product) throw new Error("Product not found");
-  return addProcessFromFlow({
-    productId: input.productId,
-    organizationId: product.organization_id,
-    flow,
-    createdBy: input.createdBy,
-  });
-}
-
 export async function addProcessFromFlow(input: {
-  productId: string | null;
   organizationId: string;
   flow: FlowDefinition;
   createdBy: string;
@@ -354,11 +284,10 @@ export async function addProcessFromFlow(input: {
   const processId = createId("prc");
   await sql(
     `insert into processes (
-       id, product_id, organization_id, name, domain, template_key, created_by
-     ) values ($1, $2, $3, $4, $5, $6, $7)`,
+       id, organization_id, name, domain, template_key, created_by
+     ) values ($1, $2, $3, $4, $5, $6)`,
     [
       processId,
-      input.productId,
       input.organizationId,
       flow.name,
       flow.domain,
@@ -651,13 +580,10 @@ export async function listWorkspaceAttention(
        p.id as process_id,
        p.name as process_name,
        coalesce(p.template_key, '') as template_key,
-       pr.id as product_id,
-       pr.name as product_name,
        wi.updated_at
      from work_items wi
      join stages s on s.id = wi.stage_id
      join processes p on p.id = wi.process_id
-     left join products pr on pr.id = p.product_id
      where p.organization_id = $1
        and wi.status not in ('done', 'stopped')
        and wi.deleted_at is null
@@ -688,13 +614,10 @@ export async function listOrganizationWorkItems(
        p.id as process_id,
        p.name as process_name,
        coalesce(p.template_key, '') as template_key,
-       pr.id as product_id,
-       pr.name as product_name,
        wi.updated_at
      from work_items wi
      join stages s on s.id = wi.stage_id
      join processes p on p.id = wi.process_id
-     left join products pr on pr.id = p.product_id
      where p.organization_id = $1
        and wi.status <> 'done'
        and wi.deleted_at is null
@@ -728,7 +651,7 @@ export async function ensureOrgProcess(input: {
       `select * from processes
        where organization_id = $1
          and template_key = $2
-         and product_id is null
+       order by created_at asc
        limit 1`,
       [input.organizationId, input.templateKey],
     )
@@ -736,7 +659,6 @@ export async function ensureOrgProcess(input: {
   if (existing) return existing;
 
   return addProcessFromFlow({
-    productId: null,
     organizationId: input.organizationId,
     flow,
     createdBy: input.createdBy,
@@ -744,16 +666,11 @@ export async function ensureOrgProcess(input: {
 }
 
 export async function buildWorkspaceBrief(organizationId: string): Promise<{
-  productCount: number;
-  products: { id: string; name: string; description: string }[];
   attention: WorkspaceAttentionItem[];
   needsYou: number;
   agentsWorking: number;
 }> {
-  const [products, attention] = await Promise.all([
-    listProducts(organizationId),
-    listWorkspaceAttention(organizationId),
-  ]);
+  const attention = await listWorkspaceAttention(organizationId);
   const needsYou = attention.filter(
     (item) => item.stage_type === "human" || item.stage_type === "legacy",
   ).length;
@@ -769,12 +686,6 @@ export async function buildWorkspaceBrief(organizationId: string): Promise<{
     );
   }).length;
   return {
-    productCount: products.length,
-    products: products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-    })),
     attention,
     needsYou,
     agentsWorking,
@@ -792,31 +703,15 @@ export async function assertOrgAccess(
   return Boolean(rows[0]);
 }
 
-export async function assertProductAccess(
-  productId: string,
-  userSub: string,
-): Promise<Product | null> {
-  const product = await getProduct(productId);
-  if (!product) return null;
-  const ok = await assertOrgAccess(product.organization_id, userSub);
-  return ok ? product : null;
-}
-
 export async function assertProcessAccess(
   processId: string,
   userSub: string,
 ): Promise<Process | null> {
   const process = await getProcess(processId);
   if (!process) return null;
-  if (process.organization_id) {
-    const ok = await assertOrgAccess(process.organization_id, userSub);
-    return ok ? process : null;
-  }
-  if (process.product_id) {
-    const product = await assertProductAccess(process.product_id, userSub);
-    return product ? process : null;
-  }
-  return null;
+  if (!process.organization_id) return null;
+  const ok = await assertOrgAccess(process.organization_id, userSub);
+  return ok ? process : null;
 }
 
 export { workItemHref } from "@/lib/work-links";

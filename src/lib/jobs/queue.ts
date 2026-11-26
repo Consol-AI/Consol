@@ -253,3 +253,62 @@ export async function workActivity(
   );
   return { stamp: rows[0]?.stamp ?? "", active: (rows[0]?.active ?? 0) > 0 };
 }
+
+export type WorkItemJobState = {
+  /** Oldest queued/running job for the item — what the worker is doing now. */
+  active: {
+    kind: JobKind;
+    status: JobStatus;
+    stageId: string | null;
+    since: string;
+  } | null;
+  /** Most recent job, when it failed — surfaced so a stall is never silent. */
+  failed: { stageId: string | null; error: string; at: string } | null;
+};
+
+/** Worker state for one item, for the job page's "what's happening" panel. */
+export async function workItemJobState(
+  workItemId: string,
+): Promise<WorkItemJobState> {
+  const rows = await sql<
+    Pick<Job, "kind" | "status" | "payload" | "last_error" | "created_at" | "updated_at">
+  >(
+    `(select kind, status, payload, last_error, created_at::text, updated_at::text
+        from jobs where work_item_id = $1 and status in ('queued', 'running')
+        order by (status = 'running') desc, created_at asc limit 1)
+     union all
+     (select kind, status, payload, last_error, created_at::text, updated_at::text
+        from jobs where work_item_id = $1
+        order by updated_at desc limit 1)`,
+    [workItemId],
+  );
+  const stageIdOf = (payload: unknown) => {
+    const value = (payload as { stageId?: unknown } | null)?.stageId;
+    return typeof value === "string" ? value : null;
+  };
+  const activeRow = rows.find(
+    (r) => r.status === "queued" || r.status === "running",
+  );
+  const latest = rows[rows.length - 1];
+  return {
+    active: activeRow
+      ? {
+          kind: activeRow.kind,
+          status: activeRow.status,
+          stageId: stageIdOf(activeRow.payload),
+          since:
+            activeRow.status === "running"
+              ? activeRow.updated_at
+              : activeRow.created_at,
+        }
+      : null,
+    failed:
+      !activeRow && latest?.status === "failed"
+        ? {
+            stageId: stageIdOf(latest.payload),
+            error: latest.last_error,
+            at: latest.updated_at,
+          }
+        : null,
+  };
+}
