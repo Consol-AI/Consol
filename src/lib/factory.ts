@@ -466,6 +466,19 @@ export async function listStageRunEvents(
   );
 }
 
+/** Latest stage run event per work item, in one query. */
+export async function listLatestStageRunEvents(
+  workItemIds: string[],
+): Promise<StageRunEvent[]> {
+  if (workItemIds.length === 0) return [];
+  return sql<StageRunEvent>(
+    `select distinct on (work_item_id) * from stage_run_events
+     where work_item_id = any($1::text[])
+     order by work_item_id, created_at desc`,
+    [workItemIds],
+  );
+}
+
 /**
  * Flow-driven status change (open/done). Never touches stopped or deleted
  * items, so a stage finishing after a stop cannot revive the flow.
@@ -737,8 +750,10 @@ export async function buildWorkspaceBrief(organizationId: string): Promise<{
   needsYou: number;
   agentsWorking: number;
 }> {
-  const products = await listProducts(organizationId);
-  const attention = await listWorkspaceAttention(organizationId);
+  const [products, attention] = await Promise.all([
+    listProducts(organizationId),
+    listWorkspaceAttention(organizationId),
+  ]);
   const needsYou = attention.filter(
     (item) => item.stage_type === "human" || item.stage_type === "legacy",
   ).length;
