@@ -25,6 +25,8 @@ export type AgentInvokeInput = {
   userHint?: string;
   /** Model ref "<provider>:<model>"; default CONSOL_MODEL / first configured key. */
   model?: string;
+  /** Aborts the model call / agent turn (flow stopped). */
+  signal?: AbortSignal;
 };
 
 export type AgentInvokeResult = {

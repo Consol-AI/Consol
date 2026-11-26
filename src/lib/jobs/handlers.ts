@@ -1,4 +1,5 @@
 import { addMessage, addStageRunEvent, getWorkItem, listStages } from "@/lib/factory";
+import { isFlowStoppedError, isStoppedStatus } from "@/lib/flows/errors";
 import { advanceWorkItem } from "@/lib/flows/runtime";
 import {
   getAgentRun,
@@ -18,7 +19,12 @@ export type JobOutcome =
   | { type: "done" }
   | { type: "reschedule"; delayMs: number; payload?: Record<string, unknown> };
 
-export type JobHandler = (job: Job) => Promise<JobOutcome>;
+export type JobContext = {
+  /** Fires when the job is cancelled (its flow was stopped or deleted). */
+  signal: AbortSignal;
+};
+
+export type JobHandler = (job: Job, ctx: JobContext) => Promise<JobOutcome>;
 
 const DONE: JobOutcome = { type: "done" };
 
@@ -31,11 +37,16 @@ function backoff(step: number, baseMs: number, capMs: number): number {
   return Math.min(capMs, Math.round(baseMs * 1.5 ** step));
 }
 
-async function executeStage(job: Job): Promise<JobOutcome> {
+async function executeStage(job: Job, ctx: JobContext): Promise<JobOutcome> {
   const payload = job.payload as StageExecutePayload;
   const item = await getWorkItem(payload.itemId);
-  // Stale job: item deleted, finished, or moved on since it was queued.
-  if (!item || item.status === "done" || item.stage_id !== payload.stageId) {
+  // Stale job: item deleted, finished, stopped, or moved on since queued.
+  if (
+    !item ||
+    item.status === "done" ||
+    isStoppedStatus(item.status) ||
+    item.stage_id !== payload.stageId
+  ) {
     return DONE;
   }
 
@@ -46,8 +57,11 @@ async function executeStage(job: Job): Promise<JobOutcome> {
       outcome: "default",
       actorSub: payload.actorSub,
       execute: true,
+      signal: ctx.signal,
     });
   } catch (error) {
+    // Stopped mid-run: the stop already recorded the cancellation.
+    if (ctx.signal.aborted || isFlowStoppedError(error)) throw error;
     const message = error instanceof Error ? error.message : String(error);
     const stage = (await listStages(item.process_id)).find(
       (s) => s.id === payload.stageId,
@@ -107,10 +121,13 @@ async function executeStage(job: Job): Promise<JobOutcome> {
   };
 }
 
-async function pollRun(job: Job): Promise<JobOutcome> {
+async function pollRun(job: Job, ctx: JobContext): Promise<JobOutcome> {
   const payload = job.payload as AgentRunPollPayload;
   const run = await getAgentRun(payload.runId);
   if (!run || !isActiveAgentRunStatus(run.status)) return DONE;
+  const item = await getWorkItem(run.work_item_id);
+  if (!item || isStoppedStatus(item.status)) return DONE;
+  if (ctx.signal.aborted) return DONE;
 
   const result = await pollAgentRun(run, payload.actorSub);
   if (!isActiveAgentRunStatus(result.run.status)) return DONE;

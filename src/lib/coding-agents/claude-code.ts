@@ -195,6 +195,30 @@ export const claudeCodeAgent: CodingAgentProvider = {
       text,
     };
   },
-  isTerminal: (status) => status === "FINISHED" || status === "ERROR",
+  async stop({ externalRunId }) {
+    const statusPath = path.join(runDirFor(externalRunId), "status.json");
+    let raw: Record<string, unknown> = {};
+    try {
+      raw = JSON.parse(await readFile(statusPath, "utf8")) as Record<string, unknown>;
+    } catch {
+      return { dryRun: false };
+    }
+    if (pidAlive(raw.pid)) {
+      // The runner is spawned detached, so it leads its own process group:
+      // signal the group to take the claude CLI child down with it.
+      try {
+        process.kill(-(raw.pid as number), "SIGTERM");
+      } catch {
+        process.kill(raw.pid as number, "SIGTERM");
+      }
+    }
+    await writeFile(
+      statusPath,
+      JSON.stringify({ ...raw, status: "CANCELLED", text: "Stopped from Consol." }),
+    );
+    return { dryRun: false };
+  },
+  isTerminal: (status) =>
+    status === "FINISHED" || status === "ERROR" || status === "CANCELLED",
   isSuccessful: (status) => status === "FINISHED",
 };

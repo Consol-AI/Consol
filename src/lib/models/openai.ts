@@ -29,11 +29,12 @@ export function openaiCompatibleModel(
   };
   return {
     ref: `${provider}:${model}`,
-    async generate({ system, prompt }) {
+    async generate({ system, prompt, abortSignal }) {
       const result = await generateText({
         model: languageModel(),
         system,
         prompt,
+        abortSignal,
       });
       return result.text.trim();
     },

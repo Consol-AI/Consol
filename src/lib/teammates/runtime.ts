@@ -56,9 +56,12 @@ type StreamEvent = {
 async function readAssistantFromStream(
   baseUrl: string,
   sessionId: string,
+  signal?: AbortSignal,
 ): Promise<string | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 90_000);
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort, { once: true });
   try {
     const res = await fetch(
       `${baseUrl}/v1/session/${sessionId}/stream?startIndex=0`,
@@ -116,6 +119,7 @@ async function readAssistantFromStream(
     return null;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", onAbort);
   }
 }
 
@@ -124,6 +128,8 @@ export async function runTeammateTurn(input: {
   message: string;
   sessionId?: string | null;
   continuationToken?: string | null;
+  /** Abort the turn (e.g. the flow that asked for it was stopped). */
+  signal?: AbortSignal;
 }): Promise<{
   source: "agent-sdk" | "mock";
   reply: string;
@@ -143,6 +149,7 @@ export async function runTeammateTurn(input: {
   try {
     if (input.sessionId && input.continuationToken) {
       const follow = await fetch(`${base}/v1/session/${input.sessionId}`, {
+        signal: input.signal,
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -157,7 +164,11 @@ export async function runTeammateTurn(input: {
           reply: mockTeammateReply(input.teammate, input.message),
         };
       }
-      const reply = await readAssistantFromStream(base, input.sessionId);
+      const reply = await readAssistantFromStream(
+        base,
+        input.sessionId,
+        input.signal,
+      );
       return {
         source: reply ? "agent-sdk" : "mock",
         reply: reply ?? mockTeammateReply(input.teammate, input.message),
@@ -167,6 +178,7 @@ export async function runTeammateTurn(input: {
     }
 
     const start = await fetch(`${base}/v1/session`, {
+      signal: input.signal,
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ message: input.message, title: input.teammate.name }),
@@ -179,7 +191,11 @@ export async function runTeammateTurn(input: {
       };
     }
 
-    const reply = await readAssistantFromStream(base, body.sessionId);
+    const reply = await readAssistantFromStream(
+      base,
+      body.sessionId,
+      input.signal,
+    );
     await updateTeammateStatus(input.teammate.slug, "local");
     return {
       source: reply ? "agent-sdk" : "mock",

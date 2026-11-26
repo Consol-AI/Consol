@@ -16,6 +16,7 @@ import {
   Play,
   RotateCcw,
   ShieldCheck,
+  Square,
   Terminal,
   X,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import {
   updateWorkItemAction,
 } from "@/app/actions";
 import { AiPanel } from "@/components/ai-panel";
+import { FlowControls } from "@/components/flow-controls";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui/button";
@@ -175,7 +177,9 @@ export function IssueFocus({
   const agentRunActive = Boolean(
     latestAgentRun && isActiveAgentRunStatus(latestAgentRun.status),
   );
-  const done = item.status === "done";
+  const stopped = item.status === "stopped";
+  // Done or stopped: nothing more will run.
+  const done = item.status === "done" || stopped;
   const working = !done && (Boolean(jobState.active) || agentRunActive);
   const pollActive =
     activity.active ||
@@ -284,21 +288,36 @@ export function IssueFocus({
               {item.title}
             </h1>
             <p className="mt-1 text-[12px] text-[var(--console-faint)]">
-              Updated {formatRelativeTime(item.updated_at)}
+              {stopped && item.stopped_at
+                ? `Stopped ${formatRelativeTime(item.stopped_at)}${
+                    item.stopped_by ? ` by ${item.stopped_by}` : ""
+                  }`
+                : `Updated ${formatRelativeTime(item.updated_at)}`}
             </p>
           </div>
-          {prLinks[0] ? (
-            <a
-              href={prLinks[0].url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[12px] font-medium text-[var(--console-ink)] ring-1 ring-[var(--console-line)] transition hover:text-[var(--console-accent)] hover:ring-[var(--console-accent)]"
-            >
-              <GitPullRequest className="size-3.5" />
-              {prLinks[0].external_id ? `PR #${prLinks[0].external_id}` : "Pull request"}
-              <ExternalLink className="size-3 text-[var(--console-faint)]" />
-            </a>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {prLinks[0] ? (
+              <a
+                href={prLinks[0].url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[12px] font-medium text-[var(--console-ink)] ring-1 ring-[var(--console-line)] transition hover:text-[var(--console-accent)] hover:ring-[var(--console-accent)]"
+              >
+                <GitPullRequest className="size-3.5" />
+                {prLinks[0].external_id ? `PR #${prLinks[0].external_id}` : "Pull request"}
+                <ExternalLink className="size-3 text-[var(--console-faint)]" />
+              </a>
+            ) : null}
+            <FlowControls
+              itemId={item.id}
+              status={item.status}
+              afterDeleteHref="/app/work"
+              onResult={(result) => {
+                setError(result.error ?? null);
+                setNotice(result.notice ?? null);
+              }}
+            />
+          </div>
         </div>
         <StageStepper
           ordered={ordered}
@@ -633,6 +652,26 @@ function NowPanel(props: NowPanelProps) {
             <p className="text-[14px] font-semibold text-emerald-900">Done</p>
             <p className="text-[12px] text-emerald-800/80">
               Finished {formatRelativeTime(item.updated_at)}.
+            </p>
+          </div>
+        </div>
+        <PrList links={props.prLinks} />
+      </section>
+    );
+  }
+
+  if (item.status === "stopped") {
+    return (
+      <section className={card}>
+        <div className="flex items-center gap-3 bg-[var(--console-panel)] px-5 py-4">
+          <Square className="size-5 text-[var(--console-muted)]" />
+          <div>
+            <p className="text-[14px] font-semibold text-[var(--console-ink)]">
+              Stopped{current ? ` at ${current.name}` : ""}
+            </p>
+            <p className="text-[12px] text-[var(--console-muted)]">
+              Work in progress was cancelled
+              {item.stopped_at ? ` ${formatRelativeTime(item.stopped_at)}` : ""}.
             </p>
           </div>
         </div>

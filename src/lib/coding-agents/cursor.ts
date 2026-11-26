@@ -4,6 +4,7 @@ import {
   getCursorRun,
   isSuccessfulRunStatus,
   isTerminalRunStatus,
+  stopCursorAgent,
 } from "@/lib/integrations/cursor/client";
 import { getCursorApiKey } from "@/lib/integrations/cursor/credentials";
 import type { CodingAgentProvider } from "@/lib/coding-agents/types";
@@ -44,6 +45,12 @@ export const cursorCodingAgent: CodingAgentProvider = {
     });
     const { prUrl, branch } = extractPrFromRun(run);
     return { status: run.status, prUrl, branch, text: run.text ?? null };
+  },
+  async stop({ organizationId, externalAgentId }) {
+    const apiKey = organizationId
+      ? ((await getCursorApiKey(organizationId)) ?? "")
+      : "";
+    return stopCursorAgent({ apiKey, agentId: externalAgentId });
   },
   isTerminal: isTerminalRunStatus,
   isSuccessful: isSuccessfulRunStatus,

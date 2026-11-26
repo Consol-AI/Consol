@@ -22,8 +22,10 @@ function request(
   system: string,
   messages: ChatTurn[],
   effort: ModelEffort,
+  signal?: AbortSignal,
 ) {
-  return getClient().beta.messages.stream({
+  return getClient().beta.messages.stream(
+    {
     model,
     max_tokens: 16000,
     system,
@@ -33,7 +35,9 @@ function request(
     // On a policy decline, the API re-runs the request on a fallback model.
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
-  });
+    },
+    { signal },
+  );
 }
 
 const REFUSAL_TEXT =
@@ -42,12 +46,13 @@ const REFUSAL_TEXT =
 export function anthropicModel(model = DEFAULT_ANTHROPIC_MODEL): TextModel {
   return {
     ref: `anthropic:${model}`,
-    async generate({ system, prompt, effort = "high" }) {
+    async generate({ system, prompt, effort = "high", abortSignal }) {
       const message = await request(
         model,
         system,
         [{ role: "user", content: prompt }],
         effort,
+        abortSignal,
       ).finalMessage();
       if (message.stop_reason === "refusal") return REFUSAL_TEXT;
       return message.content

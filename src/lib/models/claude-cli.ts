@@ -46,6 +46,7 @@ async function* runClaude(input: {
   system: string;
   prompt: string;
   effort: ModelEffort;
+  signal?: AbortSignal;
 }): AsyncGenerator<string> {
   const bin = claudeCliPath();
   if (!bin) throw new Error("claude CLI not found on PATH");
@@ -73,6 +74,7 @@ async function* runClaude(input: {
     cwd: tmpdir(),
     stdio: ["pipe", "pipe", "pipe"],
     env: process.env,
+    signal: input.signal,
   });
   child.stdin.end(input.prompt);
 
@@ -120,9 +122,15 @@ async function* runClaude(input: {
 export function claudeCliModel(model?: string): TextModel {
   return {
     ref: `claude-cli:${model ?? "default"}`,
-    async generate({ system, prompt, effort = "high" }) {
+    async generate({ system, prompt, effort = "high", abortSignal }) {
       let text = "";
-      for await (const chunk of runClaude({ model, system, prompt, effort })) {
+      for await (const chunk of runClaude({
+        model,
+        system,
+        prompt,
+        effort,
+        signal: abortSignal,
+      })) {
         text += chunk;
       }
       return text.trim();

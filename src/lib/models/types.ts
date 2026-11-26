@@ -11,6 +11,8 @@ export interface TextModel {
     system: string;
     prompt: string;
     effort?: ModelEffort;
+    /** Cancels the call (e.g. the flow was stopped). */
+    abortSignal?: AbortSignal;
   }): Promise<string>;
   stream(input: {
     system: string;

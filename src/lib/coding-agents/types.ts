@@ -40,6 +40,15 @@ export interface CodingAgentProvider {
     externalAgentId: string;
     externalRunId: string;
   }): Promise<CodingAgentRunState>;
+  /**
+   * Stop an in-flight run (flow stopped). Best-effort: callers mark the run
+   * cancelled locally either way. Returns whether anything was actually sent.
+   */
+  stop(input: {
+    organizationId: string | null;
+    externalAgentId: string;
+    externalRunId: string;
+  }): Promise<{ dryRun: boolean }>;
   isTerminal(status: string): boolean;
   isSuccessful(status: string): boolean;
 }
