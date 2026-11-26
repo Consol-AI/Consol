@@ -113,7 +113,8 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 | `DATABASE_URL_UNPOOLED` | Direct Postgres URL for migrations |
 | `DATABASE_SSL` | Set `0` to accept Railway’s self-signed public proxy cert |
 | `ANTHROPIC_API_KEY` | Claude API key for Forge chat and agent stages (optional: the local `claude` CLI login is used otherwise) |
-| `CONSOL_MODEL` | Default model ref `<provider>:<model>` (e.g. `anthropic:claude-opus-5-5`, `claude-cli`, `openai:gpt-4o-mini`, `gateway:<model>`). Default: `ANTHROPIC_API_KEY`, then the `claude` CLI, then OpenAI, then Gateway |
+| `CONSOL_MODEL` | Default model ref `<provider>:<model>` (e.g. `anthropic:claude-opus-5-5`, `claude-cli`, `openai:gpt-4o-mini`, `gateway:<model>`). Default: workspace preference, then `ANTHROPIC_API_KEY`, then the `claude` CLI, then OpenAI, then Gateway |
+| `CONSOL_MODEL_FALLBACKS` | Comma-separated model refs tried after the primary on rate-limit / capacity errors (other configured providers are also tried automatically) |
 | `CONSOL_CODING_AGENT` | Build-stage coding agent: `cursor` (Cloud Agents) or `claude-code` (local `claude` CLI). Default: Cursor if `CURSOR_API_KEY` is set, else Claude Code if the CLI is installed |
 | `CONSOL_CODING_AGENT_MODEL` | Optional `--model` for local Claude Code runs |
 | `CONSOL_AGENT_ALLOWED_TOOLS` | Comma-separated tool allowlist for local Claude Code runs (default: file edits plus git status/diff/log, npm ci/install/lint/test, npx tsc) |
@@ -146,7 +147,8 @@ No OAuth app or UI setup needed — everything comes from your local checkout an
 
 ### Models and coding agents
 
-- Text models are interchangeable via `CONSOL_MODEL` or a per-stage `model` in a flow definition (`src/lib/models/`).
+- Text models are interchangeable via **Connectors → Models**, the chat model picker, `CONSOL_MODEL`, or a per-stage `model` in a flow definition (`src/lib/models/`).
+- When Claude (or any primary) hits a rate limit or capacity error, Consol fails over to `CONSOL_MODEL_FALLBACKS` and then any other configured provider keys — so you can keep working instead of waiting out the hour.
 - The Build stage's coding agent is picked by the stage's `agent` config (`auto` by default; see `CONSOL_CODING_AGENT`; providers in `src/lib/coding-agents/`).
 
 Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `cursor-app.json` declares a Postgres database. For Railway testing, prefer `npm run db:railway-env`.

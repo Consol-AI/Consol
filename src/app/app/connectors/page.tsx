@@ -3,6 +3,7 @@ import { getViewer } from "@/lib/auth";
 import { ensureWorkspace } from "@/lib/factory";
 import { listConnectors } from "@/lib/integrations/catalog";
 import { listOrganizationConnections } from "@/lib/integrations/connections";
+import { hasTextModel } from "@/lib/models";
 
 export default async function ConnectorsPage() {
   const viewer = await getViewer();
@@ -30,6 +31,7 @@ export default async function ConnectorsPage() {
     if (row.status !== "connected") continue;
     connectedCounts[row.provider] = 1;
   }
+  if (hasTextModel()) connectedCounts.models = 1;
 
   return (
     <ConnectorsCatalog

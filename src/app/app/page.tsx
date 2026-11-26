@@ -6,6 +6,10 @@ import {
   listFlows,
   listMessages,
 } from "@/lib/factory";
+import {
+  getActiveModelRef,
+  listConfiguredModelOptions,
+} from "@/lib/models";
 import { knownRepos, listProposals } from "@/lib/proposals";
 import { toProposalFlowOption } from "@/lib/proposals/types";
 
@@ -48,6 +52,8 @@ export default async function AppHomePage() {
       attention={brief.attention}
       needsYou={brief.needsYou}
       agentsWorking={brief.agentsWorking}
+      modelOptions={listConfiguredModelOptions()}
+      defaultModelRef={getActiveModelRef()}
     />
   );
 }

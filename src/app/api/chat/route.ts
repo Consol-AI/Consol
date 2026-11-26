@@ -24,6 +24,8 @@ type ChatBody = {
   processId?: string;
   workItemId?: string;
   organizationId?: string;
+  /** Optional model ref override ("openai:gpt-4o-mini", etc.). */
+  model?: string;
   /** When true, never reply with a work proposal. */
   skipProposal?: boolean;
 };
@@ -94,7 +96,7 @@ export async function POST(request: Request) {
     authorName: viewer.name,
   });
 
-  const model = getTextModel();
+  const model = getTextModel(body.model?.trim() || null);
 
   // Home chat: when the message asks to start work, reply with a Work
   // Proposal block instead of acting. Nothing starts until the user confirms.

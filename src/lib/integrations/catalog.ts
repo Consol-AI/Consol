@@ -1,4 +1,4 @@
-export type ConnectorKey = "github" | "cursor" | "linear" | "slack";
+export type ConnectorKey = "github" | "cursor" | "models" | "linear" | "slack";
 
 export type ConnectorDefinition = {
   key: ConnectorKey;
@@ -31,6 +31,16 @@ export const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
     available: true,
     href: "/app/connectors/cursor",
     actions: ["API key", "Launch Cloud Agents", "Open PRs"],
+  },
+  {
+    key: "models",
+    name: "Models",
+    description:
+      "Choose the primary text model and see the failover chain used when Claude hits rate limits.",
+    category: "AI providers",
+    available: true,
+    href: "/app/connectors/models",
+    actions: ["Switch provider", "Rate-limit failover", "CONSOL_MODEL"],
   },
   {
     key: "linear",

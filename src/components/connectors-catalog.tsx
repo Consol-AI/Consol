@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Bot,
   Cable,
+  Cpu,
   GitPullRequest,
   MessageSquare,
   SquareKanban,
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 function connectorIcon(key: string) {
   if (key === "github") return GitPullRequest;
   if (key === "cursor") return Bot;
+  if (key === "models") return Cpu;
   if (key === "linear") return SquareKanban;
   if (key === "slack") return MessageSquare;
   return Cable;
