@@ -72,6 +72,29 @@ async function githubFetch<T>(
   return (await response.json()) as T;
 }
 
+/**
+ * Can this token see owner/repo? 404/403 mean no access; other failures
+ * (network, rate limit) throw so callers don't mistake them for a denial.
+ */
+export async function githubRepoVisible(input: {
+  owner: string;
+  repo: string;
+  token: string;
+}): Promise<boolean> {
+  try {
+    await githubFetch(
+      `/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}`,
+      { method: "GET", token: input.token },
+    );
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (/rate limit/i.test(message)) throw error;
+    if (/^GitHub API (403|404):/.test(message)) return false;
+    throw error;
+  }
+}
+
 function slugBranchSegment(input: string): string {
   return (
     input

@@ -40,6 +40,23 @@ export const getViewer = cache(async (): Promise<AppViewer | null> => {
   return null;
 });
 
+/** Viewer for a Route Handler request (same rules as `getViewer`). */
+export async function getRequestViewer(
+  request: Request,
+): Promise<{ sub: string; name: string } | null> {
+  const identity = await getIdentity(request);
+  if (identity.verified && identity.kind === "person") {
+    return {
+      sub: identity.sub,
+      name: identity.name || identity.email || "Teammate",
+    };
+  }
+  if (process.env.VERCEL || process.env.CONSOL_DEMO_AUTH === "1") {
+    return { sub: DEMO_VIEWER.sub, name: DEMO_VIEWER.name };
+  }
+  return null;
+}
+
 export async function requireViewer(): Promise<AppViewer> {
   const viewer = await getViewer();
   if (!viewer) {

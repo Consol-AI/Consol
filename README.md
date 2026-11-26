@@ -4,7 +4,7 @@ Consol is a **product factory** for cross-functional teams: one shared workspace
 
 ## What you can do
 
-1. Open the factory and land on **Home** — a Forge chat for coordinating tasks and decisions across the workspace.
+1. Open the factory and land on **Home** — a Forge chat for coordinating tasks and decisions across the workspace. Ask it to do something ("implement X") and it proposes a flow you can confirm and start right from the chat.
 2. Open **Work** to see running jobs (where you are needed) and **start a flow** with required input context.
 3. Browse **Flows** to preview process templates (stages, owners, inputs, transitions) before starting or attaching them.
 4. Start process flow templates (PM, software delivery, design, data analysis) — typed stages (`agent` / `human` / `script`) with transitions.
@@ -138,7 +138,7 @@ No OAuth app or UI setup needed — everything comes from your local checkout an
 2. Log in to the `claude` CLI. With no keys set, Forge chat and agent stages use it, and the Build stage runs **Claude Code locally**: a worktree of a Consol-managed clone under `.data/repos`, restricted to file edits plus a short shell allowlist. Consol then commits, pushes with your `gh` login, and opens the PR. Logs: `.data/agent-runs/<run>/agent.log`.
    To use Cursor Cloud Agents instead, set `CURSOR_API_KEY` (Cursor's GitHub app needs repo access). `ANTHROPIC_API_KEY` switches text generation to the API.
 3. The default repo is this checkout's `origin` (override with `CONSOL_GITHUB_REPO`, or per work item via the **Repository** input).
-4. From **Home** chat say "ship: add a footer changelog link" (or "ship on owner/repo: …"), or use **Work → Start flow → Software delivery**.
+4. From **Home** chat ask for the work, e.g. "implement a footer changelog link in consol". Forge replies with a **work proposal** block (flow, title, goal, repository, acceptance). Edit it and press **Start**, or dismiss it. Nothing runs until you press Start. You can also use **Work → Start flow → Software delivery**. Without a model configured, only "ship: …" / "implement …" style messages are recognised.
 5. Approve the spec — the coding agent opens a PR, **Validate** waits on the repo's CI checks, then you approve ship and Consol merges.
 6. Without a Cursor key / GitHub token (or with `CONSOL_CURSOR_DRY_RUN=1` / `CONSOL_GITHUB_DRY_RUN=1`), those steps run as dry-runs.
 

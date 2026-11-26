@@ -1,7 +1,6 @@
-import { getIdentity } from "../../../../cursor/identity";
 import { formatWorkspaceBriefForPrompt, mockAssistantReply } from "@/lib/ai";
-import { parseDeliveryIntent, startSoftwareDelivery } from "@/lib/delivery/start";
-import { resolveRepo } from "@/lib/integrations/local";
+import { getRequestViewer } from "@/lib/auth";
+import { getFlow, listFlows } from "@/lib/flows";
 import { getTextModel } from "@/lib/models";
 import {
   addMessage,
@@ -10,8 +9,13 @@ import {
   buildWorkspaceBrief,
   getProcess,
   getWorkItem,
+  listMessages,
   listStages,
+  type Message,
 } from "@/lib/factory";
+import { createProposal, knownRepos } from "@/lib/proposals";
+import { inferWorkProposal } from "@/lib/proposals/infer";
+import { REPO_INPUT_KEY } from "@/lib/proposals/types";
 
 export const runtime = "nodejs";
 
@@ -20,27 +24,12 @@ type ChatBody = {
   processId?: string;
   workItemId?: string;
   organizationId?: string;
-  /** When true, skip delivery auto-start even if intent matches. */
-  skipDelivery?: boolean;
-  /** Confirm starting a parsed delivery from chat. */
-  confirmDelivery?: boolean;
-  deliveryTitle?: string;
-  deliveryBody?: string;
-  deliveryRepo?: string;
+  /** When true, never reply with a work proposal. */
+  skipProposal?: boolean;
 };
 
 export async function POST(request: Request) {
-  const identity = await getIdentity(request);
-  const viewer =
-    identity.verified && identity.kind === "person"
-      ? {
-          sub: identity.sub,
-          name: identity.name || identity.email || "Teammate",
-        }
-      : process.env.VERCEL || process.env.CONSOL_DEMO_AUTH === "1"
-        ? { sub: "user:demo", name: "Demo Teammate" }
-        : null;
-
+  const viewer = await getRequestViewer(request);
   if (!viewer) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -89,7 +78,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "context required" }, { status: 400 });
   }
 
-  await addMessage({
+  // Home-thread history (before this message) gives proposals context.
+  const history: Message[] =
+    organizationId && !processId && !workItemId
+      ? (await listMessages({ organizationId })).slice(-8)
+      : [];
+
+  const userMessage = await addMessage({
     organizationId,
     processId,
     workItemId,
@@ -99,103 +94,49 @@ export async function POST(request: Request) {
     authorName: viewer.name,
   });
 
-  // Home-chat delivery initiation (confirm or propose).
-  if (organizationId && !processId && !workItemId && !body.skipDelivery) {
-    const intent = body.confirmDelivery
-      ? {
-          wantsDelivery: true,
-          title: (body.deliveryTitle || message).trim(),
-          body: (body.deliveryBody || message).trim(),
-          repo: body.deliveryRepo?.trim() || undefined,
-        }
-      : parseDeliveryIntent(message);
+  const model = getTextModel();
 
-    if (intent.wantsDelivery && body.confirmDelivery) {
-      try {
-        const started = await startSoftwareDelivery({
-          organizationId,
-          actorSub: viewer.sub,
-          title: intent.title,
-          body: intent.body,
-          repo: intent.repo,
-          runSpec: true,
-        });
-        const reply = [
-          `Started **software delivery** on \`${started.repo.owner}/${started.repo.repo}\`.`,
-          "",
-          `**${started.item.title}**`,
-          started.specSummary
-            ? `Drafting the spec now — ${started.specSummary}`
-            : "Work item created at Spec.",
-          "",
-          `Open it: ${started.href}`,
-          "",
-          "Next: approve the spec, then Consol launches a coding agent to build and open a PR.",
-        ].join("\n");
-        await addMessage({
-          organizationId,
-          processId: started.process.id,
-          workItemId: started.item.id,
-          role: "assistant",
-          content: reply,
-          authorName: "Forge AI",
-        });
-        return Response.json({
-          reply,
-          delivery: {
-            started: true,
-            href: started.href,
-            itemId: started.item.id,
-            processId: started.process.id,
-            title: started.item.title,
-          },
-        });
-      } catch (error) {
-        const detail =
-          error instanceof Error ? error.message : "Could not start delivery";
-        const reply = `I couldn't start software delivery: ${detail}`;
-        await addMessage({
-          organizationId,
-          role: "assistant",
-          content: reply,
-          authorName: "Forge AI",
-        });
-        return Response.json({ reply, error: detail }, { status: 400 });
-      }
-    }
-
-    if (intent.wantsDelivery && !body.confirmDelivery) {
-      const repo = await resolveRepo(intent.repo ? { repo: intent.repo } : null);
-      const reply = repo
-        ? [
-            `I can start a **software delivery** on \`${repo.owner}/${repo.repo}\` (base \`${repo.baseBranch}\`) for:`,
-            "",
-            `**${intent.title}**`,
-            "",
-            "Flow: Spec → Approve spec → Build (coding agent) → Validate → Approve ship → Merge.",
-            "Confirm and I'll create the work item, draft the spec, and park it on Approve spec.",
-          ].join("\n")
-        : "I couldn't find a GitHub repo to deliver to. Set `CONSOL_GITHUB_REPO=owner/repo` in .env.local, or name one: \"ship on owner/repo: …\".";
-      await addMessage({
+  // Home chat: when the message asks to start work, reply with a Work
+  // Proposal block instead of acting. Nothing starts until the user confirms.
+  if (organizationId && !processId && !workItemId && !body.skipProposal) {
+    const flows = listFlows();
+    const inferred = await inferWorkProposal({
+      message,
+      history: history.map((m) => ({ role: m.role, content: m.content })),
+      flows,
+      knownRepos: await knownRepos(),
+      model,
+    });
+    const flow = inferred ? getFlow(inferred.flowKey) : undefined;
+    if (inferred && flow) {
+      const missingRepo = flow.inputs.some(
+        (field) =>
+          field.key === REPO_INPUT_KEY && !inferred.inputs[REPO_INPUT_KEY],
+      );
+      const reply = [
+        `I can start this as a **${flow.name}** flow. Check the details below and press **Start** when they look right — nothing runs until you do.`,
+        missingRepo ? "Pick the repository it should run against." : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const assistantMessage = await addMessage({
         organizationId,
         role: "assistant",
         content: reply,
         authorName: "Forge AI",
       });
-      return Response.json({
-        reply,
-        delivery: {
-          started: false,
-          needsConfirm: true,
-          title: intent.title,
-          body: intent.body,
-          repo: repo ? `${repo.owner}/${repo.repo}` : null,
-        },
+      const proposal = await createProposal({
+        organizationId,
+        messageId: assistantMessage.id,
+        sourceMessageId: userMessage.id,
+        flowKey: flow.key,
+        inputs: inferred.inputs,
+        createdBy: viewer.sub,
       });
+      return Response.json({ reply, message: assistantMessage, proposal });
     }
   }
 
-  const model = getTextModel();
   if (!model) {
     const reply = mockAssistantReply({
       userMessage: message,
@@ -220,7 +161,7 @@ export async function POST(request: Request) {
         "Help the user coordinate tasks and decisions across flows, work items, and teammates.",
         "Be concrete and concise. Surface what needs a human decision first, then agent work, then waiting items.",
         "When useful, point to a work item by name and suggest the next decision or handoff.",
-        "Users can start a software delivery from chat, e.g. \"ship: add a footer link\" (spec → approve → coding agent build → validate → approve → merge).",
+        "Users can start work from chat by asking for it, e.g. \"implement a footer changelog link in owner/repo\". Forge then shows a work proposal they confirm; you never start work yourself.",
         "Do not invent work that is not in the workspace brief unless the user asks to draft something new.",
         "",
         `Workspace brief:\n${workspaceBriefText}`,
