@@ -8,7 +8,6 @@ import {
   updateWorkItem,
 } from "@/lib/factory";
 import { advanceWorkItem } from "@/lib/flows/runtime";
-import { enqueueStageExecution } from "@/lib/jobs/enqueue";
 import {
   updateAgentRun,
   type AgentRun,
@@ -232,14 +231,7 @@ export async function pollAgentRun(
       },
     });
 
-    // Queue validate once the PR exists (re-checks while CI runs).
-    if (advanced && advance.toStageKey === "validate") {
-      await enqueueStageExecution({
-        itemId: item.id,
-        stageId: advance.item.stage_id,
-        actorSub,
-      });
-    }
+    // advanceWorkItem queues the next stage (validate) for the worker.
   } else if (onBuild && !prUrl) {
     await addStageRunEvent({
       workItemId: item.id,

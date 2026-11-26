@@ -109,6 +109,20 @@ export async function listWorkItemExternalLinks(
   );
 }
 
+/** Most recent GitHub pull request link per work item, in one query. */
+export async function listLatestPullRequestLinks(
+  workItemIds: string[],
+): Promise<WorkItemExternalLink[]> {
+  if (workItemIds.length === 0) return [];
+  return sql<WorkItemExternalLink>(
+    `select distinct on (work_item_id) * from work_item_external_links
+     where work_item_id = any($1::text[])
+       and provider = 'github' and link_type = 'pull_request'
+     order by work_item_id, created_at desc`,
+    [workItemIds],
+  );
+}
+
 export async function addWorkItemExternalLink(input: {
   workItemId: string;
   provider: string;
