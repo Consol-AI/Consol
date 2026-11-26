@@ -4,6 +4,7 @@ export {
   getGithubConfigForProduct,
   getProductIntegration,
   listProductIntegrations,
+  listLatestPullRequestLinks,
   listWorkItemExternalLinks,
   parseGithubConfig,
   parseIntegrationConfig,

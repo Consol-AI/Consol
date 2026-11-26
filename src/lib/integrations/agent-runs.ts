@@ -72,6 +72,19 @@ export async function listAgentRunsForWorkItem(
   );
 }
 
+/** Most recent agent run per work item, in one query. */
+export async function listLatestAgentRuns(
+  workItemIds: string[],
+): Promise<AgentRun[]> {
+  if (workItemIds.length === 0) return [];
+  return sql<AgentRun>(
+    `select distinct on (work_item_id) * from agent_runs
+     where work_item_id = any($1::text[])
+     order by work_item_id, created_at desc`,
+    [workItemIds],
+  );
+}
+
 export async function listActiveAgentRuns(
   processId?: string,
 ): Promise<AgentRun[]> {

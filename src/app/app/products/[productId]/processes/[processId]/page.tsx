@@ -17,15 +17,22 @@ import {
   getProcess,
   getWorkItem,
   listMessages,
+  listLatestStageRunEvents,
   listStageRunEvents,
   listStageTransitions,
   listStages,
   listWorkItems,
 } from "@/lib/factory";
 import { getFlow } from "@/lib/flows";
-import { listAgentRunsForWorkItem } from "@/lib/integrations/agent-runs";
+import {
+  listAgentRunsForWorkItem,
+  listLatestAgentRuns,
+} from "@/lib/integrations/agent-runs";
 import { workActivity } from "@/lib/jobs/queue";
-import { listWorkItemExternalLinks } from "@/lib/integrations";
+import {
+  listLatestPullRequestLinks,
+  listWorkItemExternalLinks,
+} from "@/lib/integrations";
 import { attentionCounts } from "@/lib/issues/attention";
 
 export default async function ProcessPage({
@@ -113,30 +120,28 @@ export default async function ProcessPage({
   }
 
   const isSoftwareDelivery = process.template_key === "software-delivery";
+  // One batched query per table, not three per item: every query is a
+  // round trip to the database.
+  const itemIds = isSoftwareDelivery ? items.map((item) => item.id) : [];
+  const [latestEvents, prLinks, latestRuns, processActivity] =
+    await Promise.all([
+      listLatestStageRunEvents(itemIds),
+      listLatestPullRequestLinks(itemIds),
+      listLatestAgentRuns(itemIds),
+      workActivity({ processId: process.id }),
+    ]);
+  const eventByItem = new Map(latestEvents.map((e) => [e.work_item_id, e]));
+  const prByItem = new Map(prLinks.map((l) => [l.work_item_id, l]));
+  const runByItem = new Map(latestRuns.map((r) => [r.work_item_id, r]));
   const overviewRows = isSoftwareDelivery
-    ? await Promise.all(
-        items.map(async (item) => {
-          const [events, links, runs] = await Promise.all([
-            listStageRunEvents(item.id),
-            listWorkItemExternalLinks(item.id),
-            listAgentRunsForWorkItem(item.id),
-          ]);
-          return {
-            item,
-            stage: stages.find((s) => s.id === item.stage_id) ?? null,
-            latestEvent: events[events.length - 1],
-            agentRun: runs[0] ?? null,
-            prLink:
-              links.find(
-                (l) =>
-                  l.provider === "github" && l.link_type === "pull_request",
-              ) ?? null,
-          };
-        }),
-      )
+    ? items.map((item) => ({
+        item,
+        stage: stages.find((s) => s.id === item.stage_id) ?? null,
+        latestEvent: eventByItem.get(item.id),
+        agentRun: runByItem.get(item.id) ?? null,
+        prLink: prByItem.get(item.id) ?? null,
+      }))
     : [];
-
-  const processActivity = await workActivity({ processId: process.id });
   const hasActiveBuilds = overviewRows.some(
     (row) =>
       row.agentRun &&
