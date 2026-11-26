@@ -21,6 +21,7 @@ import {
   updateWorkItemAction,
 } from "@/app/actions";
 import { AiPanel } from "@/components/ai-panel";
+import { FlowControls } from "@/components/flow-controls";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -97,9 +98,11 @@ export function IssueFocus({
   const current = ordered.find((s) => s.id === item.stage_id) ?? null;
   const currentMeta = stageMeta(current?.stage_type ?? "legacy");
   const latestAgentRun = agentRuns[0] ?? null;
+  const stopped = item.status === "stopped";
+  const finished = item.status === "done" || stopped;
   const pollActive =
     activity.active ||
-    (item.status !== "done" &&
+    (!finished &&
     Boolean(
       (latestAgentRun && isActiveAgentRunStatus(latestAgentRun.status)) ||
         current?.stage_key === "build" ||
@@ -213,12 +216,12 @@ export function IssueFocus({
             variant="outline"
             className={cn(
               "h-5 border-transparent px-1.5 text-[10px]",
-              item.status === "done"
-                ? "bg-[var(--console-accent-soft)] text-[var(--console-accent)]"
+              stopped
+                ? "bg-[var(--console-panel)] text-[var(--console-muted)]"
                 : "bg-[var(--console-accent-soft)] text-[var(--console-accent)]",
             )}
           >
-            {item.status === "done" ? "Done" : "Open"}
+            {item.status === "done" ? "Done" : stopped ? "Stopped" : "Open"}
           </Badge>
           {current ? (
             <Badge
@@ -232,11 +235,26 @@ export function IssueFocus({
             </Badge>
           ) : null}
         </div>
-        <h1 className="mt-2 text-[24px] font-semibold tracking-tight text-[var(--console-ink)]">
-          {item.title}
-        </h1>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-[24px] font-semibold tracking-tight text-[var(--console-ink)]">
+            {item.title}
+          </h1>
+          <FlowControls
+            itemId={item.id}
+            status={item.status}
+            afterDeleteHref={backHref}
+            onResult={(result) => {
+              setError(result.error ?? null);
+              setNotice(result.notice ?? null);
+            }}
+          />
+        </div>
         <p className="mt-1 text-[13px] text-[var(--console-muted)]">
-          Updated {formatRelativeTime(item.updated_at)}
+          {stopped && item.stopped_at
+            ? `Stopped ${formatRelativeTime(item.stopped_at)}${
+                item.stopped_by ? ` by ${item.stopped_by}` : ""
+              }`
+            : `Updated ${formatRelativeTime(item.updated_at)}`}
         </p>
         {inputEntries.length ? (
           <dl className="mt-4 grid gap-2 rounded-xl bg-[var(--console-panel)] p-3.5 ring-1 ring-[var(--console-line)] sm:grid-cols-2">
@@ -389,7 +407,12 @@ export function IssueFocus({
                         </p>
                       ) : null}
 
-                      {isCurrent && item.status !== "done" ? (
+                      {isCurrent && stopped ? (
+                        <p className="mt-1.5 text-[12px] text-[var(--console-muted)]">
+                          Flow stopped here. Work in progress was cancelled.
+                        </p>
+                      ) : null}
+                      {isCurrent && !finished ? (
                         <div className="mt-3 flex flex-wrap gap-1.5">
                           {flowBacked && stage.stage_type === "agent" ? (
                             <Button

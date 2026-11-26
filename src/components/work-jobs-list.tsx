@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Briefcase, Plus } from "lucide-react";
+import { FlowControls } from "@/components/flow-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,13 +41,24 @@ export function WorkJobsList({ items }: { items: OrganizationWorkItem[] }) {
     waiting: [],
     done: [],
   };
+  const stopped: OrganizationWorkItem[] = [];
   for (const item of items) {
-    groups[bucketForWorkItem(item)].push(item);
+    if (item.status === "stopped") stopped.push(item);
+    else groups[bucketForWorkItem(item)].push(item);
   }
 
-  const visibleBuckets = ATTENTION_ORDER.filter(
-    (bucket) => bucket !== "done" && groups[bucket].length > 0,
-  );
+  const sections: { key: string; label: string; items: OrganizationWorkItem[] }[] = [
+    ...ATTENTION_ORDER.filter(
+      (bucket) => bucket !== "done" && groups[bucket].length > 0,
+    ).map((bucket) => ({
+      key: bucket,
+      label: ATTENTION_LABELS[bucket],
+      items: groups[bucket],
+    })),
+    ...(stopped.length
+      ? [{ key: "stopped", label: "Stopped", items: stopped }]
+      : []),
+  ];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -91,35 +103,38 @@ export function WorkJobsList({ items }: { items: OrganizationWorkItem[] }) {
           </div>
         ) : (
           <div className="animate-rise-delay mx-auto max-w-[820px] space-y-5">
-            {visibleBuckets.map((bucket) => (
+            {sections.map((section) => (
               <section
-                key={bucket}
+                key={section.key}
                 className="overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]"
               >
                 <header className="flex items-center justify-between border-b border-[var(--console-line)] px-4 py-3">
                   <div>
                     <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
-                      {ATTENTION_LABELS[bucket]}
+                      {section.label}
                     </h2>
                     <p className="text-[11px] text-[var(--console-faint)]">
-                      {groups[bucket].length}{" "}
-                      {groups[bucket].length === 1 ? "job" : "jobs"}
+                      {section.items.length}{" "}
+                      {section.items.length === 1 ? "job" : "jobs"}
                     </p>
                   </div>
-                  {bucket === "needs_you" ? (
+                  {section.key === "needs_you" ? (
                     <Badge className="h-5 border-transparent bg-[var(--console-accent-soft)] px-1.5 text-[10px] text-[var(--console-accent)]">
                       Action needed
                     </Badge>
                   ) : null}
                 </header>
                 <ul className="divide-y divide-[var(--console-line)]">
-                  {groups[bucket].map((item) => {
+                  {section.items.map((item) => {
                     const meta = stageMeta(item.stage_type);
                     return (
-                      <li key={item.id}>
+                      <li
+                        key={item.id}
+                        className="flex items-center gap-2 pr-3 transition hover:bg-[var(--console-hover)]"
+                      >
                         <Link
                           href={workItemHref(item)}
-                          className="block px-4 py-3.5 transition hover:bg-[var(--console-hover)]"
+                          className="block min-w-0 flex-1 px-4 py-3.5"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -149,6 +164,11 @@ export function WorkJobsList({ items }: { items: OrganizationWorkItem[] }) {
                             </div>
                           </div>
                         </Link>
+                        <FlowControls
+                          itemId={item.id}
+                          status={item.status}
+                          compact
+                        />
                       </li>
                     );
                   })}

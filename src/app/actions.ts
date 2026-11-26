@@ -266,6 +266,67 @@ export async function updateWorkItemAction(formData: FormData) {
   });
 }
 
+export type FlowControlResult = {
+  ok: boolean;
+  summary: string;
+  warnings?: string[];
+};
+
+/** Stop a flow: cancel queued/running jobs and external agents. Idempotent. */
+export async function stopWorkItemAction(
+  formData: FormData,
+): Promise<FlowControlResult> {
+  const viewer = await requireViewer();
+  const itemId = String(formData.get("itemId") ?? "");
+  const item = await getWorkItem(itemId);
+  if (!item) return { ok: false, summary: "This flow no longer exists." };
+  const process = await assertProcessAccess(item.process_id, viewer.sub);
+  if (!process) throw new Error("Forbidden");
+
+  const { stopWorkItem } = await import("@/lib/flows/stop");
+  const result = await stopWorkItem({ itemId, actorSub: viewer.sub });
+  revalidateWorkPaths({
+    processId: process.id,
+    productId: process.product_id,
+    itemId,
+  });
+  if (item.status === "done") {
+    return { ok: true, summary: "This flow already finished." };
+  }
+  return {
+    ok: true,
+    summary: result.stopped
+      ? "Flow stopped. Running work was cancelled."
+      : "Flow is already stopped.",
+    warnings: result.warnings,
+  };
+}
+
+/** Stop (if running) and soft-delete a flow. Idempotent. */
+export async function deleteWorkItemAction(
+  formData: FormData,
+): Promise<FlowControlResult> {
+  const viewer = await requireViewer();
+  const itemId = String(formData.get("itemId") ?? "");
+  const item = await getWorkItem(itemId);
+  if (!item) return { ok: true, summary: "Flow deleted." };
+  const process = await assertProcessAccess(item.process_id, viewer.sub);
+  if (!process) throw new Error("Forbidden");
+
+  const { deleteWorkItem } = await import("@/lib/flows/stop");
+  const result = await deleteWorkItem({ itemId, actorSub: viewer.sub });
+  revalidateWorkPaths({
+    processId: process.id,
+    productId: process.product_id,
+    itemId,
+  });
+  return {
+    ok: true,
+    summary: "Flow deleted.",
+    warnings: result.stop.warnings,
+  };
+}
+
 export async function saveGithubIntegrationAction(formData: FormData) {
   const viewer = await requireViewer();
   const productId = String(formData.get("productId") ?? "");

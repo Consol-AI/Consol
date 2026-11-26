@@ -1,4 +1,5 @@
 import { hostname } from "node:os";
+import { isFlowStoppedError } from "@/lib/flows/errors";
 import { listActiveAgentRuns } from "@/lib/integrations/agent-runs";
 import { enqueueAgentRunPoll } from "@/lib/jobs/enqueue";
 import { JOB_HANDLERS } from "@/lib/jobs/handlers";
@@ -7,6 +8,7 @@ import {
   completeJob,
   extendLease,
   failJob,
+  jobStillOwned,
   rescheduleJob,
   sweepExpiredJobs,
   type Job,
@@ -19,6 +21,11 @@ export type WorkerOptions = {
   pollIntervalMs?: number;
   /** Lease length; renewed every third of it while a handler runs. */
   leaseMs?: number;
+  /**
+   * How often a running job checks it was not cancelled (flow stopped or
+   * deleted). On cancellation the handler's AbortSignal fires.
+   */
+  cancelCheckMs?: number;
   log?: (message: string) => void;
 };
 
@@ -59,6 +66,7 @@ export function startWorker(options: WorkerOptions = {}): WorkerHandle {
   const concurrency = Math.max(1, options.concurrency ?? 4);
   const pollIntervalMs = options.pollIntervalMs ?? 1_000;
   const leaseMs = options.leaseMs ?? 120_000;
+  const cancelCheckMs = options.cancelCheckMs ?? 2_000;
   const log = options.log ?? ((m: string) => console.log(`[worker] ${m}`));
   const id = `${hostname()}:${process.pid}:${Math.random().toString(36).slice(2, 8)}`;
 
@@ -73,11 +81,25 @@ export function startWorker(options: WorkerOptions = {}): WorkerHandle {
     const heartbeat = setInterval(() => {
       void extendLease(job.id, id, leaseMs).catch(() => {});
     }, Math.floor(leaseMs / 3));
+    // Cancellation travels through the DB so a stop issued by the web process
+    // reaches whichever worker process holds the job.
+    const controller = new AbortController();
+    const cancelWatch = setInterval(() => {
+      void jobStillOwned(job.id, id)
+        .then((owned) => {
+          if (!owned && !controller.signal.aborted) {
+            controller.abort(new Error("Job cancelled"));
+          }
+        })
+        .catch(() => {});
+    }, cancelCheckMs);
     const started = Date.now();
     try {
       if (!handler) throw new Error(`No handler for job kind "${job.kind}"`);
-      const outcome = await handler(job);
-      if (outcome.type === "reschedule") {
+      const outcome = await handler(job, { signal: controller.signal });
+      if (controller.signal.aborted) {
+        log(`${job.kind} ${job.id} cancelled after ${Date.now() - started}ms`);
+      } else if (outcome.type === "reschedule") {
         await rescheduleJob(job.id, outcome.delayMs, outcome.payload);
       } else {
         await completeJob(job.id);
@@ -85,10 +107,18 @@ export function startWorker(options: WorkerOptions = {}): WorkerHandle {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const result = await failJob(job, message).catch(() => "failed");
-      log(`${job.kind} ${job.id} ${result}: ${message}`);
+      if (controller.signal.aborted || isFlowStoppedError(error)) {
+        // Flow was stopped: the job row is already cancelled (or about to be);
+        // completing it keeps a stray running job from lingering.
+        await completeJob(job.id).catch(() => {});
+        log(`${job.kind} ${job.id} cancelled: ${message}`);
+      } else {
+        const result = await failJob(job, message).catch(() => "failed");
+        log(`${job.kind} ${job.id} ${result}: ${message}`);
+      }
     } finally {
       clearInterval(heartbeat);
+      clearInterval(cancelWatch);
     }
   }
 

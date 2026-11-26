@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { sql } from "@/lib/db";
 import { getFlow, listFlows } from "@/lib/flows";
+import { FlowStoppedError } from "@/lib/flows/errors";
 import { parseStageConfig } from "@/lib/flows/stage-config";
 import type { FlowDefinition, FlowStage, StageType } from "@/lib/flows/types";
 import { normalizeTransitions } from "@/lib/flows/types";
@@ -98,11 +99,16 @@ export type WorkItem = {
   title: string;
   body: string;
   inputs: Record<string, string>;
+  /** open | done | stopped */
   status: string;
   assignee_sub: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
+  stopped_at?: string | null;
+  stopped_by?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 };
 
 export type Message = {
@@ -460,14 +466,21 @@ export async function listStageRunEvents(
   );
 }
 
+/**
+ * Flow-driven status change (open/done). Never touches stopped or deleted
+ * items, so a stage finishing after a stop cannot revive the flow.
+ */
 export async function setWorkItemStatus(
   itemId: string,
   status: string,
 ): Promise<WorkItem> {
-  await sql(
-    `update work_items set status = $1, updated_at = now() where id = $2`,
+  const rows = await sql<{ id: string }>(
+    `update work_items set status = $1, updated_at = now()
+     where id = $2 and status <> 'stopped' and deleted_at is null
+     returning id`,
     [status, itemId],
   );
+  if (!rows[0]) throw new FlowStoppedError();
   return (await getWorkItem(itemId))!;
 }
 
@@ -479,15 +492,21 @@ export { listFlows };
 
 export async function listWorkItems(processId: string): Promise<WorkItem[]> {
   const rows = await sql<WorkItem>(
-    `select * from work_items where process_id = $1 order by updated_at desc`,
+    `select * from work_items
+     where process_id = $1 and deleted_at is null
+     order by updated_at desc`,
     [processId],
   );
   return rows.map(normalizeWorkItem);
 }
 
+/** Live (not deleted) item. Deleted items read as missing everywhere. */
 export async function getWorkItem(itemId: string): Promise<WorkItem | null> {
   const row = (
-    await sql<WorkItem>(`select * from work_items where id = $1`, [itemId])
+    await sql<WorkItem>(
+      `select * from work_items where id = $1 and deleted_at is null`,
+      [itemId],
+    )
   )[0];
   return row ? normalizeWorkItem(row) : null;
 }
@@ -523,10 +542,13 @@ export async function moveWorkItem(
   itemId: string,
   stageId: string,
 ): Promise<WorkItem> {
-  await sql(
-    `update work_items set stage_id = $1, updated_at = now() where id = $2`,
+  const rows = await sql<{ id: string }>(
+    `update work_items set stage_id = $1, updated_at = now()
+     where id = $2 and status <> 'stopped' and deleted_at is null
+     returning id`,
     [stageId, itemId],
   );
+  if (!rows[0]) throw new FlowStoppedError();
   return (await getWorkItem(itemId))!;
 }
 
@@ -624,7 +646,8 @@ export async function listWorkspaceAttention(
      join processes p on p.id = wi.process_id
      left join products pr on pr.id = p.product_id
      where p.organization_id = $1
-       and wi.status <> 'done'
+       and wi.status not in ('done', 'stopped')
+       and wi.deleted_at is null
      order by
        case
          when coalesce(s.stage_type, 'legacy') in ('human', 'legacy') then 0
@@ -661,8 +684,10 @@ export async function listOrganizationWorkItems(
      left join products pr on pr.id = p.product_id
      where p.organization_id = $1
        and wi.status <> 'done'
+       and wi.deleted_at is null
      order by
        case
+         when wi.status = 'stopped' then 3
          when coalesce(s.stage_type, 'legacy') in ('human', 'legacy') then 0
          when s.stage_type = 'agent' then 1
          else 2
