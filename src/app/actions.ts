@@ -263,6 +263,34 @@ export async function clearCursorApiKeyAction() {
   revalidatePath("/app/connectors/cursor");
 }
 
+export async function saveModelPreferenceAction(formData: FormData) {
+  await requireViewer();
+  const modelRef = String(formData.get("modelRef") ?? "").trim();
+  if (!modelRef) throw new Error("Model ref is required");
+
+  const { isModelRefConfigured, writeModelPreference } = await import(
+    "@/lib/models"
+  );
+  if (!isModelRefConfigured(modelRef)) {
+    throw new Error(
+      `Model ${modelRef} is not configured. Check the provider API key.`,
+    );
+  }
+  await writeModelPreference(modelRef);
+  revalidatePath("/app");
+  revalidatePath("/app/connectors");
+  revalidatePath("/app/connectors/models");
+}
+
+export async function clearModelPreferenceAction() {
+  await requireViewer();
+  const { clearModelPreference } = await import("@/lib/models");
+  await clearModelPreference();
+  revalidatePath("/app");
+  revalidatePath("/app/connectors");
+  revalidatePath("/app/connectors/models");
+}
+
 export async function startSoftwareDeliveryAction(input: {
   title: string;
   body?: string;

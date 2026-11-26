@@ -52,6 +52,7 @@ import type { AgentRun } from "@/lib/integrations/agent-runs-shared";
 import { isActiveAgentRunStatus } from "@/lib/integrations/agent-runs-shared";
 import type { WorkItemExternalLink } from "@/lib/integrations";
 import type { WorkItemJobState } from "@/lib/jobs/queue";
+import type { ModelOption } from "@/lib/models";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -68,6 +69,8 @@ type Props = {
   /** Background-work marker from the server render (see /api/work/activity). */
   activity?: { stamp: string; active: boolean };
   jobState?: WorkItemJobState;
+  modelOptions?: ModelOption[];
+  defaultModelRef?: string | null;
 };
 
 const card =
@@ -153,6 +156,8 @@ export function IssueFocus({
   flowInputs = [],
   activity = { stamp: "", active: false },
   jobState = { active: null, failed: null },
+  modelOptions = [],
+  defaultModelRef = null,
 }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(item.title);
@@ -537,6 +542,8 @@ export function IssueFocus({
               initialMessages={messages}
               title="Discussion"
               embedded
+              modelOptions={modelOptions}
+              defaultModelRef={defaultModelRef}
             />
           </div>
         </aside>

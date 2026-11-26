@@ -3,6 +3,10 @@
 import { Markdown } from "@/components/markdown";
 import Link from "next/link";
 import { LiveDot } from "@/components/live-dot";
+import {
+  ModelPicker,
+  usePreferredModelRef,
+} from "@/components/model-picker";
 import { WorkProposalBlock } from "@/components/work-proposal-block";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import {
@@ -16,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Message, WorkspaceAttentionItem } from "@/lib/factory";
+import type { ModelOption } from "@/lib/models";
 import type {
   ProposalFlowOption,
   WorkProposalView,
@@ -47,6 +52,8 @@ type Props = {
   attention: WorkspaceAttentionItem[];
   needsYou: number;
   agentsWorking: number;
+  modelOptions: ModelOption[];
+  defaultModelRef: string | null;
 };
 
 export function HomeChat({
@@ -59,12 +66,18 @@ export function HomeChat({
   attention,
   needsYou,
   agentsWorking,
+  modelOptions,
+  defaultModelRef,
 }: Props) {
   const [messages, setMessages] = useState(initialMessages);
   const [proposals, setProposals] = useState(initialProposals);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [modelRef, setModelRef] = usePreferredModelRef(
+    modelOptions,
+    defaultModelRef,
+  );
 
   /** Proposal blocks render directly under the assistant message they belong to. */
   const proposalsByMessage = useMemo(() => {
@@ -120,7 +133,11 @@ export function HomeChat({
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message: content, organizationId }),
+          body: JSON.stringify({
+            message: content,
+            organizationId,
+            model: modelRef || undefined,
+          }),
         });
         if (!res.ok) {
           const detail = await res.text().catch(() => "");
@@ -318,9 +335,18 @@ export function HomeChat({
                 }}
               />
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] text-[var(--console-faint)]">
-                  ⌘/Ctrl + Enter to send
-                </p>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <ModelPicker
+                    options={modelOptions}
+                    defaultRef={defaultModelRef}
+                    value={modelRef}
+                    onChange={setModelRef}
+                    compact
+                  />
+                  <p className="text-[11px] text-[var(--console-faint)]">
+                    ⌘/Ctrl + Enter
+                  </p>
+                </div>
                 <Button
                   type="button"
                   size="sm"

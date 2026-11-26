@@ -17,7 +17,8 @@
     "smoke:sdlc": "tsx scripts/smoke-sdlc-flow.ts",
     "smoke:work-flow": "tsx scripts/smoke-work-flow.ts",
     "smoke:worker": "tsx scripts/smoke-worker.ts",
-    "smoke:stop": "tsx scripts/smoke-stop.ts"
+    "smoke:stop": "tsx scripts/smoke-stop.ts",
+    "smoke:model-failover": "tsx scripts/smoke-model-failover.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.121",

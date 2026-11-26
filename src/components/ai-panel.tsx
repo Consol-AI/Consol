@@ -5,8 +5,13 @@ import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/markdown";
+import {
+  ModelPicker,
+  usePreferredModelRef,
+} from "@/components/model-picker";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Message } from "@/lib/factory";
+import type { ModelOption } from "@/lib/models";
 import { cn } from "@/lib/utils";
 
 /** Long agent drafts get clamped so the thread stays scannable. */
@@ -42,6 +47,8 @@ type Props = {
   title?: string;
   /** When true, omit outer chrome (parent supplies header/surface). */
   embedded?: boolean;
+  modelOptions?: ModelOption[];
+  defaultModelRef?: string | null;
 };
 
 export function AiPanel({
@@ -50,11 +57,17 @@ export function AiPanel({
   initialMessages,
   title = "AI collaborator",
   embedded = false,
+  modelOptions = [],
+  defaultModelRef = null,
 }: Props) {
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [modelRef, setModelRef] = usePreferredModelRef(
+    modelOptions,
+    defaultModelRef,
+  );
 
   function send() {
     const content = draft.trim();
@@ -79,7 +92,12 @@ export function AiPanel({
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message: content, processId, workItemId }),
+          body: JSON.stringify({
+            message: content,
+            processId,
+            workItemId,
+            model: modelRef || undefined,
+          }),
         });
         if (!res.ok) {
           const detail = await res.text().catch(() => "");
@@ -229,9 +247,21 @@ export function AiPanel({
           }}
         />
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] text-[var(--console-faint)]">
-            ⌘/Ctrl + Enter
-          </p>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {modelOptions.length > 0 ? (
+              <ModelPicker
+                options={modelOptions}
+                defaultRef={defaultModelRef}
+                value={modelRef}
+                onChange={setModelRef}
+                compact
+              />
+            ) : (
+              <p className="text-[11px] text-[var(--console-faint)]">
+                ⌘/Ctrl + Enter
+              </p>
+            )}
+          </div>
           <Button
             type="button"
             size="sm"

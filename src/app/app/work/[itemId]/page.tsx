@@ -14,6 +14,10 @@ import { getFlow } from "@/lib/flows";
 import { listWorkItemExternalLinks } from "@/lib/integrations";
 import { listAgentRunsForWorkItem } from "@/lib/integrations/agent-runs";
 import { workActivity, workItemJobState } from "@/lib/jobs/queue";
+import {
+  getActiveModelRef,
+  listConfiguredModelOptions,
+} from "@/lib/models";
 
 export default async function WorkItemPage({
   params,
@@ -80,6 +84,8 @@ export default async function WorkItemPage({
         activity={activity}
         jobState={jobState}
         flowInputs={flow?.inputs ?? []}
+        modelOptions={listConfiguredModelOptions()}
+        defaultModelRef={getActiveModelRef()}
       />
     </div>
   );
