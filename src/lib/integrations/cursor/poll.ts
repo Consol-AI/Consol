@@ -7,6 +7,7 @@ import {
   listStages,
   updateWorkItem,
 } from "@/lib/factory";
+import { isStoppedStatus } from "@/lib/flows/errors";
 import { advanceWorkItem } from "@/lib/flows/runtime";
 import {
   updateAgentRun,
@@ -94,6 +95,9 @@ export async function pollAgentRun(
       summary: "Work item missing",
     };
   }
+  if (isStoppedStatus(item.status)) {
+    return { run, changed: false, advanced: false, summary: "Flow stopped" };
+  }
   const process = await getProcess(item.process_id);
   if (!process) {
     return {
@@ -129,6 +133,13 @@ export async function pollAgentRun(
     const message =
       error instanceof Error ? error.message : "Cursor poll failed";
     return { run, changed: false, advanced: false, summary: message };
+  }
+
+  // The flow may have been stopped while we waited on Cursor: the stop marked
+  // this run CANCELLED, so don't overwrite it or advance the item.
+  const latest = await getWorkItem(item.id);
+  if (!latest || isStoppedStatus(latest.status)) {
+    return { run, changed: false, advanced: false, summary: "Flow stopped" };
   }
 
   const { prUrl, branch } = extractPrFromRun(remote);

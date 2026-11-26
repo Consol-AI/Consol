@@ -236,6 +236,25 @@ export async function getCursorRun(input: {
   );
 }
 
+/**
+ * Ask Cursor to stop a Cloud Agent's in-flight work. No-op for dry-run
+ * agents. Callers treat failures as best-effort: the local run is marked
+ * cancelled and polling stops regardless.
+ */
+export async function stopCursorAgent(input: {
+  apiKey: string;
+  agentId: string;
+}): Promise<{ dryRun: boolean }> {
+  if (cursorDryRunMode(input.apiKey) || input.agentId.startsWith("bc-dry-")) {
+    return { dryRun: true };
+  }
+  await cursorFetch<unknown>(
+    `/v0/agents/${encodeURIComponent(input.agentId)}/stop`,
+    { method: "POST", apiKey: input.apiKey },
+  );
+  return { dryRun: false };
+}
+
 export function extractPrFromRun(run: CursorRun): {
   prUrl: string | null;
   branch: string | null;

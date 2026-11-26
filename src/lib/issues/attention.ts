@@ -24,7 +24,8 @@ export function attentionBucketForItem(
   item: WorkItem,
   stageById: Map<string, Stage>,
 ): AttentionBucket {
-  if (item.status === "done") return "done";
+  // Stopped flows are finished too: nothing for anyone to act on.
+  if (item.status === "done" || item.status === "stopped") return "done";
   const stage = stageById.get(item.stage_id);
   if (!stage) return "waiting";
   if (stage.stage_type === "human") return "needs_you";

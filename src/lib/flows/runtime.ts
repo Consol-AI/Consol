@@ -1,6 +1,8 @@
 import { invokeAgent } from "@/lib/agents";
 import type { AgentToolName } from "@/lib/agents/types";
+import { FlowStoppedError, isStoppedStatus } from "@/lib/flows/errors";
 import { runFlowScript } from "@/lib/flows/scripts";
+import { cancelAgentRunsForWorkItem } from "@/lib/flows/stop";
 import { enqueueStageExecution } from "@/lib/jobs/enqueue";
 import {
   resolveTransition,
@@ -72,10 +74,25 @@ async function appendSystemNote(input: {
   });
 }
 
+/**
+ * Throw if the item was stopped/deleted or the job was cancelled. Called
+ * before any write that follows long-running work.
+ */
+async function assertStillRunning(
+  itemId: string,
+  signal?: AbortSignal,
+): Promise<WorkItem> {
+  if (signal?.aborted) throw new FlowStoppedError();
+  const item = await getWorkItem(itemId);
+  if (!item || isStoppedStatus(item.status)) throw new FlowStoppedError();
+  return item;
+}
+
 export async function runAgentStage(input: {
   item: WorkItem;
   stage: Stage;
   actorSub: string;
+  signal?: AbortSignal;
 }): Promise<{ summary: string; content: string }> {
   const config = stageConfig(input.stage);
   const agentKey = asString(config.agentKey, "forge");
@@ -90,7 +107,11 @@ export async function runAgentStage(input: {
     workItemBody: input.item.body,
     workItemInputs: input.item.inputs,
     stageName: input.stage.name,
+    signal: input.signal,
   });
+
+  // Stopped while the agent was thinking: drop its output.
+  await assertStillRunning(input.item.id, input.signal);
 
   const nextBody = [
     input.item.body.trim(),
@@ -136,6 +157,7 @@ export async function runScriptStage(input: {
   stage: Stage;
   actorSub: string;
   productId?: string;
+  signal?: AbortSignal;
 }): Promise<{
   outcome: "success" | "failure" | "pending";
   summary: string;
@@ -155,6 +177,19 @@ export async function runScriptStage(input: {
     workItemId: input.item.id,
     actorSub: input.actorSub,
   });
+
+  try {
+    await assertStillRunning(input.item.id, input.signal);
+  } catch (error) {
+    // The script may have launched an external agent after the stop swept
+    // the item's runs (e.g. Cursor build); stop that one too.
+    await cancelAgentRunsForWorkItem({
+      workItemId: input.item.id,
+      processId: input.item.process_id,
+      actorSub: input.actorSub,
+    }).catch(() => {});
+    throw error;
+  }
 
   await appendSystemNote({
     processId: input.item.process_id,
@@ -218,6 +253,7 @@ export async function queueCurrentStage(input: {
   if (stage.stage_type === "human") {
     throw new Error("Human stages require approve/reject, not execute");
   }
+  if (isStoppedStatus(item.status)) throw new FlowStoppedError();
   const stageKey = stage.stage_key || stage.id;
   const job = await enqueueStageExecution({
     itemId: item.id,
@@ -243,9 +279,12 @@ export async function advanceWorkItem(input: {
   actorSub: string;
   /** When true, run agent/script executor before transitioning. */
   execute?: boolean;
+  /** Aborts in-flight agent work when the flow is stopped. */
+  signal?: AbortSignal;
 }): Promise<AdvanceResult> {
   const item = await getWorkItem(input.itemId);
   if (!item) throw new Error("Item not found");
+  if (isStoppedStatus(item.status)) throw new FlowStoppedError();
   const process = await getProcess(item.process_id);
   if (!process) throw new Error("Process not found");
 
@@ -266,6 +305,7 @@ export async function advanceWorkItem(input: {
         item,
         stage,
         actorSub: input.actorSub,
+        signal: input.signal,
       });
       summary = agentResult.summary;
       outcome = "default";
@@ -279,6 +319,7 @@ export async function advanceWorkItem(input: {
         stage,
         actorSub: input.actorSub,
         productId: process.product_id ?? undefined,
+        signal: input.signal,
       });
       summary = scriptResult.summary;
       outcome = scriptResult.outcome;

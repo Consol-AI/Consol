@@ -23,6 +23,8 @@ export type AgentInvokeInput = {
   workItemInputs?: Record<string, string>;
   stageName: string;
   userHint?: string;
+  /** Aborts the model call / agent turn (flow stopped). */
+  signal?: AbortSignal;
 };
 
 export type AgentInvokeResult = {

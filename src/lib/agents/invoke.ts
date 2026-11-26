@@ -65,7 +65,12 @@ export async function invokeAgent(
       .filter(Boolean)
       .join("\n\n");
 
-    const turn = await runTeammateTurn({ teammate, message });
+    const turn = await runTeammateTurn({
+      teammate,
+      message,
+      signal: input.signal,
+    });
+    input.signal?.throwIfAborted();
     const toolsUsed = (
       input.allowedTools?.length ? input.allowedTools : teammate.tools
     ).slice(0, 3) as AgentToolName[];
@@ -127,6 +132,7 @@ export async function invokeAgent(
     model,
     system: rolePrompt,
     prompt: userPrompt,
+    abortSignal: input.signal,
   });
 
   return {

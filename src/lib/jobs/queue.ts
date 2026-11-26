@@ -6,12 +6,20 @@ import { createId } from "@/lib/id";
  * process), so `npm run dev` needs no extra infrastructure.
  *
  * Lifecycle: queued → running → succeeded | failed. A handler can also
- * reschedule its job (back to queued) to poll an external system.
+ * reschedule its job (back to queued) to poll an external system. Stopping a
+ * flow moves its queued/running jobs to `cancelled`; completion, reschedule
+ * and failure only apply while a job is still `running`, so a handler that
+ * finishes after a stop cannot revive its job.
  */
 
 export type JobKind = "stage.execute" | "agent_run.poll";
 
-export type JobStatus = "queued" | "running" | "succeeded" | "failed";
+export type JobStatus =
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
 
 export type Job<P = Record<string, unknown>> = {
   id: string;
@@ -41,9 +49,17 @@ export async function enqueueJob(input: {
   /** Retries are opt-in: most stage work has side effects. */
   maxAttempts?: number;
 }): Promise<Job | null> {
+  // Never queue work for a stopped or deleted item (closes the race where a
+  // stage finishes and hands off right as the flow is stopped).
   const rows = await sql<Job>(
     `insert into jobs (id, kind, payload, work_item_id, dedupe_key, max_attempts, run_at)
-     values ($1, $2, $3::jsonb, $4, $5, $6, now() + ($7::text || ' milliseconds')::interval)
+     select $1::text, $2::text, $3::jsonb, $4::text, $5::text, $6::int,
+            now() + ($7::text || ' milliseconds')::interval
+     where $4::text is null
+        or exists (
+          select 1 from work_items
+          where id = $4::text and status <> 'stopped' and deleted_at is null
+        )
      on conflict (dedupe_key)
        where dedupe_key is not null and status in ('queued', 'running')
        do nothing
@@ -110,7 +126,7 @@ export async function completeJob(jobId: string): Promise<void> {
   await sql(
     `update jobs
      set status = 'succeeded', locked_by = null, locked_until = null, updated_at = now()
-     where id = $1`,
+     where id = $1 and status = 'running'`,
     [jobId],
   );
 }
@@ -130,7 +146,7 @@ export async function rescheduleJob(
          locked_by = null,
          locked_until = null,
          updated_at = now()
-     where id = $1`,
+     where id = $1 and status = 'running'`,
     [jobId, String(Math.max(0, delayMs)), payload ? JSON.stringify(payload) : null],
   );
 }
@@ -149,10 +165,43 @@ export async function failJob(job: Job, error: string): Promise<"retry" | "faile
          locked_by = null,
          locked_until = null,
          updated_at = now()
-     where id = $1`,
+     where id = $1 and status = 'running'`,
     [job.id, retry ? "queued" : "failed", error.slice(0, 4000), String(backoffMs)],
   );
   return retry ? "retry" : "failed";
+}
+
+/**
+ * Cancel every queued or running job for a work item. Running handlers see
+ * the change through `getJobStatus` and abort; their late writes are ignored.
+ */
+export async function cancelJobsForWorkItem(
+  workItemId: string,
+  reason: string,
+): Promise<Job[]> {
+  return sql<Job>(
+    `update jobs
+     set status = 'cancelled',
+         last_error = $2,
+         locked_by = null,
+         locked_until = null,
+         updated_at = now()
+     where work_item_id = $1 and status in ('queued', 'running')
+     returning *`,
+    [workItemId, reason.slice(0, 4000)],
+  );
+}
+
+/** True while `workerId` still owns the job as running. */
+export async function jobStillOwned(
+  jobId: string,
+  workerId: string,
+): Promise<boolean> {
+  const rows = await sql<{ id: string }>(
+    `select id from jobs where id = $1 and status = 'running' and locked_by = $2`,
+    [jobId, workerId],
+  );
+  return Boolean(rows[0]);
 }
 
 /** Mark crashed jobs with no attempts left as failed. Returns them. */
