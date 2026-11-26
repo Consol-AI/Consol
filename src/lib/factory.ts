@@ -460,13 +460,15 @@ export async function createWorkItem(input: {
   body: string;
   createdBy: string;
   inputs?: Record<string, string>;
+  /** Where the item came from, e.g. { type: "chat", proposal_id }. */
+  origin?: Record<string, string> | null;
 }): Promise<WorkItem> {
   const id = createId("wit");
   const inputs = input.inputs ?? {};
   await sql(
     `insert into work_items (
-       id, process_id, stage_id, title, body, inputs, created_by
-     ) values ($1, $2, $3, $4, $5, $6::jsonb, $7)`,
+       id, process_id, stage_id, title, body, inputs, created_by, origin
+     ) values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8::jsonb)`,
     [
       id,
       input.processId,
@@ -475,6 +477,7 @@ export async function createWorkItem(input: {
       input.body.trim(),
       JSON.stringify(inputs),
       input.createdBy,
+      input.origin ? JSON.stringify(input.origin) : null,
     ],
   );
   return (await getWorkItem(id))!;

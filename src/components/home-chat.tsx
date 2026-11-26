@@ -3,7 +3,8 @@
 import { Markdown } from "@/components/markdown";
 import Link from "next/link";
 import { LiveDot } from "@/components/live-dot";
-import { useState, useTransition } from "react";
+import { WorkProposalBlock } from "@/components/work-proposal-block";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import {
   ArrowUpRight,
   Loader2,
@@ -15,12 +16,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Message, WorkspaceAttentionItem } from "@/lib/factory";
+import type {
+  ProposalFlowOption,
+  WorkProposalView,
+} from "@/lib/proposals/types";
 import { workItemHref } from "@/lib/work-links";
 import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
   "What needs my decision today?",
-  "Ship: add a subtle footer changelog link",
+  "Implement a subtle footer changelog link",
   "Summarize open work across flows",
   "Help me prioritize what to ship next",
 ] as const;
@@ -36,6 +41,9 @@ type Props = {
   organizationId: string;
   orgName: string;
   initialMessages: Message[];
+  initialProposals: WorkProposalView[];
+  flows: ProposalFlowOption[];
+  knownRepos: string[];
   attention: WorkspaceAttentionItem[];
   needsYou: number;
   agentsWorking: number;
@@ -45,30 +53,51 @@ export function HomeChat({
   organizationId,
   orgName,
   initialMessages,
+  initialProposals,
+  flows,
+  knownRepos,
   attention,
   needsYou,
   agentsWorking,
 }: Props) {
   const [messages, setMessages] = useState(initialMessages);
+  const [proposals, setProposals] = useState(initialProposals);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [deliveryConfirm, setDeliveryConfirm] = useState<{
-    title: string;
-    body: string;
-    repo: string | null;
-  } | null>(null);
-  const [lastDeliveryHref, setLastDeliveryHref] = useState<string | null>(null);
 
-  function send(
-    contentOverride?: string,
-    options?: {
-      confirmDelivery?: boolean;
-      deliveryTitle?: string;
-      deliveryBody?: string;
-      deliveryRepo?: string | null;
-    },
-  ) {
+  /** Proposal blocks render directly under the assistant message they belong to. */
+  const proposalsByMessage = useMemo(() => {
+    const map = new Map<string, WorkProposalView>();
+    for (const proposal of proposals) {
+      if (proposal.message_id) map.set(proposal.message_id, proposal);
+    }
+    return map;
+  }, [proposals]);
+
+  const upsertProposal = useCallback((next: WorkProposalView) => {
+    setProposals((prev) => {
+      const others = prev.filter((p) => p.id !== next.id);
+      // A new open proposal supersedes any other open one (mirrors the server).
+      const updated =
+        next.state === "proposed"
+          ? others.map((p) =>
+              p.state === "proposed"
+                ? { ...p, state: "superseded" as const }
+                : p,
+            )
+          : others;
+      return [...updated, next];
+    });
+  }, []);
+
+  const appendMessage = useCallback((message: Message) => {
+    setMessages((prev) =>
+      prev.some((m) => m.id === message.id) ? prev : [...prev, message],
+    );
+  }, []);
+
+  function send(contentOverride?: string) {
     const content = (contentOverride ?? draft).trim();
     if (!content || pending) return;
     setError(null);
@@ -91,14 +120,7 @@ export function HomeChat({
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            message: content,
-            organizationId,
-            confirmDelivery: options?.confirmDelivery,
-            deliveryTitle: options?.deliveryTitle,
-            deliveryBody: options?.deliveryBody,
-            deliveryRepo: options?.deliveryRepo ?? undefined,
-          }),
+          body: JSON.stringify({ message: content, organizationId }),
         });
         if (!res.ok) {
           const detail = await res.text().catch(() => "");
@@ -108,30 +130,11 @@ export function HomeChat({
         if (contentType.includes("application/json")) {
           const data = (await res.json()) as {
             reply: string;
-            delivery?: {
-              started?: boolean;
-              needsConfirm?: boolean;
-              href?: string;
-              title?: string;
-              body?: string;
-              repo?: string | null;
-            };
+            message?: Message;
+            proposal?: WorkProposalView;
           };
-          if (data.delivery?.needsConfirm && data.delivery.title) {
-            setDeliveryConfirm({
-              title: data.delivery.title,
-              body: data.delivery.body || content,
-              repo: data.delivery.repo ?? null,
-            });
-          } else {
-            setDeliveryConfirm(null);
-          }
-          if (data.delivery?.started && data.delivery.href) {
-            setLastDeliveryHref(data.delivery.href);
-          }
-          setMessages((prev) => [
-            ...prev,
-            {
+          appendMessage(
+            data.message ?? {
               id: tempMessageId("tmp_ai"),
               organization_id: organizationId,
               process_id: null,
@@ -142,7 +145,8 @@ export function HomeChat({
               author_name: "Forge AI",
               created_at: new Date().toISOString(),
             },
-          ]);
+          );
+          if (data.proposal) upsertProposal(data.proposal);
           return;
         }
 
@@ -258,26 +262,39 @@ export function HomeChat({
                 </div>
               ) : null}
 
-              {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={cn(
-                    "rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed",
-                    m.role === "user"
-                      ? "ml-8 bg-[var(--console-ink)] text-white"
-                      : "mr-8 bg-[var(--console-surface)] text-[var(--console-ink)] ring-1 ring-[var(--console-line)]",
-                  )}
-                >
-                  <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] opacity-60">
-                    {m.role === "user" ? "You" : "Forge"}
-                  </p>
-                  {m.role === "user" ? (
-                    <div className="whitespace-pre-wrap">{m.content}</div>
-                  ) : (
-                    <Markdown>{m.content}</Markdown>
-                  )}
-                </div>
-              ))}
+              {messages.map((m) => {
+                const proposal = proposalsByMessage.get(m.id);
+                return (
+                  <div key={m.id} className="flex flex-col gap-2">
+                    <div
+                      className={cn(
+                        "rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed",
+                        m.role === "user"
+                          ? "ml-8 bg-[var(--console-ink)] text-white"
+                          : "mr-8 bg-[var(--console-surface)] text-[var(--console-ink)] ring-1 ring-[var(--console-line)]",
+                      )}
+                    >
+                      <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.06em] opacity-60">
+                        {m.role === "user" ? "You" : "Forge"}
+                      </p>
+                      {m.role === "user" ? (
+                        <div className="whitespace-pre-wrap">{m.content}</div>
+                      ) : (
+                        <Markdown>{m.content}</Markdown>
+                      )}
+                    </div>
+                    {proposal ? (
+                      <WorkProposalBlock
+                        proposal={proposal}
+                        flows={flows}
+                        knownRepos={knownRepos}
+                        onChange={upsertProposal}
+                        onMessage={appendMessage}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </ScrollArea>
 
@@ -286,54 +303,6 @@ export function HomeChat({
               {error ? (
                 <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-[12px] text-red-700">
                   {error}
-                </p>
-              ) : null}
-              {deliveryConfirm ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--console-accent-soft)] px-2.5 py-2 text-[12px] text-[var(--console-accent)]">
-                  <span className="min-w-0 flex-1">
-                    Start delivery for <strong>{deliveryConfirm.title}</strong>
-                    {deliveryConfirm.repo ? (
-                      <> on <code>{deliveryConfirm.repo}</code></>
-                    ) : null}
-                    ?
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-7"
-                    disabled={pending}
-                    onClick={() =>
-                      send(`Start software delivery: ${deliveryConfirm.title}`, {
-                        confirmDelivery: true,
-                        deliveryTitle: deliveryConfirm.title,
-                        deliveryBody: deliveryConfirm.body,
-                        deliveryRepo: deliveryConfirm.repo,
-                      })
-                    }
-                  >
-                    Confirm start
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7"
-                    disabled={pending}
-                    onClick={() => setDeliveryConfirm(null)}
-                  >
-                    Dismiss
-                  </Button>
-                </div>
-              ) : null}
-              {lastDeliveryHref ? (
-                <p className="text-[12px] text-[var(--console-muted)]">
-                  Latest delivery:{" "}
-                  <Link
-                    href={lastDeliveryHref}
-                    className="font-medium text-[var(--console-accent)] hover:underline"
-                  >
-                    Open work item
-                  </Link>
                 </p>
               ) : null}
               <Textarea

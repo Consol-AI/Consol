@@ -3,22 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
-import {
-  formatFlowInputsBlock,
-  getFlow,
-  validateFlowInputs,
-} from "@/lib/flows";
+import { getFlow, validateFlowInputs } from "@/lib/flows";
 import {
   advanceWorkItem,
   queueCurrentStage,
   queueStageIfAutomated,
   type AdvanceOutcome,
 } from "@/lib/flows/runtime";
+import { startFlowWorkItem } from "@/lib/flows/start";
 import {
   assertOrgAccess,
   assertProcessAccess,
-  createWorkItem,
-  ensureOrgProcess,
   ensureWorkspace,
   getProcess,
   getWorkItem,
@@ -69,37 +64,19 @@ export async function startWorkFlowAction(
   const validated = validateFlowInputs(flow.inputs, rawInputs);
   if (!validated.ok) return { error: validated.error };
 
-  const title =
-    validated.inputs.title?.trim() ||
-    validated.inputs.goal?.trim() ||
-    validated.inputs.opportunity?.trim() ||
-    flow.name;
-  const inputsBlock = formatFlowInputsBlock(validated.inputs, flow.inputs);
-  const body = inputsBlock;
-
-  const process = await ensureOrgProcess({
-    organizationId: org.id,
-    templateKey: flow.key,
-    createdBy: viewer.sub,
-  });
-  const stages = await listStages(process.id);
-  const entry =
-    stages.find((s) => s.stage_key === flow.entry) ?? stages[0];
-  if (!entry) return { error: "Flow has no entry stage" };
-
-  const item = await createWorkItem({
-    processId: process.id,
-    stageId: entry.id,
-    title,
-    body,
-    inputs: validated.inputs,
-    createdBy: viewer.sub,
-  });
-  await queueStageIfAutomated({
-    itemId: item.id,
-    stage: entry,
-    actorSub: viewer.sub,
-  });
+  let item;
+  try {
+    ({ item } = await startFlowWorkItem({
+      organizationId: org.id,
+      actorSub: viewer.sub,
+      flow,
+      inputs: validated.inputs,
+    }));
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not start flow",
+    };
+  }
 
   revalidateWorkPaths({ itemId: item.id });
   redirect(workItemHref(item));

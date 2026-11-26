@@ -3,8 +3,11 @@ import { getViewer } from "@/lib/auth";
 import {
   buildWorkspaceBrief,
   ensureWorkspace,
+  listFlows,
   listMessages,
 } from "@/lib/factory";
+import { knownRepos, listProposals } from "@/lib/proposals";
+import { toProposalFlowOption } from "@/lib/proposals/types";
 
 export default async function AppHomePage() {
   const viewer = await getViewer();
@@ -27,9 +30,11 @@ export default async function AppHomePage() {
   }
 
   const org = await ensureWorkspace(viewer);
-  const [brief, messages] = await Promise.all([
+  const [brief, messages, proposals, repos] = await Promise.all([
     buildWorkspaceBrief(org.id),
     listMessages({ organizationId: org.id }),
+    listProposals(org.id),
+    knownRepos(),
   ]);
 
   return (
@@ -37,6 +42,9 @@ export default async function AppHomePage() {
       organizationId={org.id}
       orgName={org.name}
       initialMessages={messages}
+      initialProposals={proposals}
+      flows={listFlows().map(toProposalFlowOption)}
+      knownRepos={repos}
       attention={brief.attention}
       needsYou={brief.needsYou}
       agentsWorking={brief.agentsWorking}
