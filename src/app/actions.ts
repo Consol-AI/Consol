@@ -11,6 +11,7 @@ import {
 import {
   advanceWorkItem,
   queueCurrentStage,
+  queueStageIfAutomated,
   type AdvanceOutcome,
 } from "@/lib/flows/runtime";
 import {
@@ -119,6 +120,11 @@ export async function createWorkItemAction(formData: FormData) {
     body,
     createdBy: viewer.sub,
   });
+  await queueStageIfAutomated({
+    itemId: item.id,
+    stage: entry,
+    actorSub: viewer.sub,
+  });
   revalidateWorkPaths({
     processId,
     productId: process.product_id,
@@ -178,6 +184,11 @@ export async function startWorkFlowAction(
     inputs: validated.inputs,
     createdBy: viewer.sub,
   });
+  await queueStageIfAutomated({
+    itemId: item.id,
+    stage: entry,
+    actorSub: viewer.sub,
+  });
 
   revalidateWorkPaths({
     processId: process.id,
@@ -215,6 +226,10 @@ export async function moveWorkItemAction(formData: FormData) {
   }
 
   await moveWorkItem(itemId, stageId);
+  const target = (await listStages(process.id)).find((s) => s.id === stageId);
+  if (target) {
+    await queueStageIfAutomated({ itemId, stage: target, actorSub: viewer.sub });
+  }
   revalidateWorkPaths({
     processId: process.id,
     productId: process.product_id,

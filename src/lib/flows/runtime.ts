@@ -177,6 +177,30 @@ export async function runScriptStage(input: {
   return { outcome: result.outcome, summary: result.summary };
 }
 
+/** Agent and script stages run on the worker; human/legacy stages wait. */
+export function isAutomatedStage(stage: Pick<Stage, "stage_type">): boolean {
+  return stage.stage_type === "agent" || stage.stage_type === "script";
+}
+
+/**
+ * Queue an agent/script stage the moment an item lands on it, so flows run
+ * end to end without anyone pressing "run". No-op for human stages; deduped
+ * while a job for the same item + stage is queued or running.
+ */
+export async function queueStageIfAutomated(input: {
+  itemId: string;
+  stage: Stage;
+  actorSub: string;
+}): Promise<boolean> {
+  if (!isAutomatedStage(input.stage)) return false;
+  await enqueueStageExecution({
+    itemId: input.itemId,
+    stageId: input.stage.id,
+    actorSub: input.actorSub,
+  });
+  return true;
+}
+
 /**
  * Queue the item's current agent/script stage for the worker. Returns
  * immediately; progress shows up as stage run events and messages.
@@ -339,20 +363,15 @@ export async function advanceWorkItem(input: {
     await setWorkItemStatus(item.id, "open");
   }
 
-  // After human approval into an automated script stage, queue it immediately
-  // (spec-approve → build launches Cursor; ship-approve → merge closes the PR).
+  // Every flow stage runs on its own: entering an agent/script stage queues
+  // it for the worker (spec → build → validate → merge, review loops, etc).
   if (
-    !input.execute &&
-    stage.stage_type === "human" &&
-    outcome === "approve" &&
-    nextStage.stage_type === "script" &&
-    (nextStage.stage_key === "merge" || nextStage.stage_key === "build")
-  ) {
-    await enqueueStageExecution({
+    await queueStageIfAutomated({
       itemId: item.id,
-      stageId: nextStage.id,
+      stage: nextStage,
       actorSub: input.actorSub,
-    });
+    })
+  ) {
     return {
       item: (await getWorkItem(item.id))!,
       fromStageKey: stageKey,
