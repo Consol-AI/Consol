@@ -23,6 +23,8 @@ export type AgentInvokeInput = {
   workItemInputs?: Record<string, string>;
   stageName: string;
   userHint?: string;
+  /** Model ref "<provider>:<model>"; default CONSOL_MODEL / first configured key. */
+  model?: string;
 };
 
 export type AgentInvokeResult = {

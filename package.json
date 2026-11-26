@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.121",
+    "@anthropic-ai/sdk": "^1.14.0",
     "@base-ui/react": "^1.9.0",
     "@electric-sql/pglite": "^0.5.16",
     "ai": "^7.0.177",

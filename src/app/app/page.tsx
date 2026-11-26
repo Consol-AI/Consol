@@ -40,7 +40,6 @@ export default async function AppHomePage() {
       attention={brief.attention}
       needsYou={brief.needsYou}
       agentsWorking={brief.agentsWorking}
-      productCount={brief.productCount}
     />
   );
 }

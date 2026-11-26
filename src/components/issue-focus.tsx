@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -28,7 +28,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { parseStageConfig } from "@/lib/flows/stage-config";
 import { legalOutcomesForStage } from "@/lib/flows/transitions";
-import type { ProcessViewMode } from "@/components/process-view-toggle";
 import {
   formatRelativeTime,
   latestEventForStage,
@@ -48,7 +47,6 @@ import type { WorkItemExternalLink } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  productId?: string | null;
   processId: string;
   item: WorkItem;
   stages: Stage[];
@@ -58,15 +56,19 @@ type Props = {
   messages: Message[];
   externalLinks?: WorkItemExternalLink[];
   agentRuns?: AgentRun[];
-  returnView?: ProcessViewMode;
   backHref?: string;
   flowInputs?: { key: string; label: string }[];
   /** Background-work marker from the server render (see /api/work/activity). */
   activity?: { stamp: string; active: boolean };
 };
 
+
+function isCodingAgentPath(path: unknown): boolean {
+  const value = String(path ?? "");
+  return value === "coding-agent" || value === "cursor-build";
+}
+
 export function IssueFocus({
-  productId,
   processId,
   item,
   stages,
@@ -76,7 +78,6 @@ export function IssueFocus({
   messages,
   externalLinks = [],
   agentRuns = [],
-  returnView = "list",
   backHref: backHrefProp,
   flowInputs = [],
   activity = { stamp: "", active: false },
@@ -88,10 +89,13 @@ export function IssueFocus({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Reset the draft when the server sends a fresh item (adjust-during-render).
+  const [syncedItem, setSyncedItem] = useState(item);
+  if (syncedItem !== item) {
+    setSyncedItem(item);
     setTitle(item.title);
     setBody(item.body);
-  }, [item]);
+  }
 
   const ordered = [...stages].sort((a, b) => a.position - b.position);
   const current = ordered.find((s) => s.id === item.stage_id) ?? null;
@@ -105,13 +109,7 @@ export function IssueFocus({
         current?.stage_key === "build" ||
         current?.stage_key === "validate",
     ));
-  const backHref =
-    backHrefProp ??
-    (productId
-      ? returnView === "board"
-        ? `/app/products/${productId}/processes/${processId}?view=board`
-        : `/app/products/${productId}/processes/${processId}`
-      : "/app/work");
+  const backHref = backHrefProp ?? "/app/work";
   const inputEntries = flowInputs.length
     ? flowInputs
         .map((field) => ({
@@ -201,13 +199,11 @@ export function IssueFocus({
           className="inline-flex items-center gap-1.5 text-[12px] text-[var(--console-faint)] transition hover:text-[var(--console-accent)]"
         >
           <ArrowLeft className="size-3" />
-          {backHrefProp
-            ? "Back to Work"
-            : `Back to ${returnView === "board" ? "board" : "list"}`}
+          Back to Work
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--console-faint)]">
-            {productId ? "Issue" : "Work"}
+            Work
           </p>
           <Badge
             variant="outline"
@@ -423,15 +419,15 @@ export function IssueFocus({
                                 <Loader2 className="size-3.5 animate-spin" />
                               ) : stage.stage_key === "build" ||
                                 stage.stage_key === "merge" ||
-                                String(config.path ?? "") === "cursor-build" ||
+                                isCodingAgentPath(config.path) ||
                                 String(config.path ?? "") === "open-pr" ? (
                                 <GitPullRequest className="size-3.5" />
                               ) : (
                                 <Terminal className="size-3.5" />
                               )}
                               {stage.stage_key === "build" ||
-                              String(config.path ?? "") === "cursor-build"
-                                ? "Run Cursor build"
+                              isCodingAgentPath(config.path)
+                                ? "Run build"
                                 : stage.stage_key === "validate"
                                   ? "Run checks"
                                   : stage.stage_key === "merge"

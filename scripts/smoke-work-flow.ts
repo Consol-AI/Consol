@@ -25,7 +25,7 @@ async function main() {
   const validated = validateFlowInputs(flow.inputs, {
     title: "Ship Work section",
     goal: "Let teammates start flows without a product",
-    repo_context: "consol",
+    repo: "Consol-AI/Consol",
     acceptance: "Can start from /app/work/new and see job listed",
   });
   if (!validated.ok) throw new Error(validated.error);
@@ -54,7 +54,6 @@ async function main() {
   console.log(
     JSON.stringify(
       {
-        processProductId: process.product_id,
         processOrgId: process.organization_id,
         itemId: item.id,
         inputs: item.inputs,
@@ -68,7 +67,11 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+// PGlite keeps the event loop alive; exit explicitly once checks pass.
+main().then(
+  () => process.exit(0),
+  (error) => {
+    console.error(error);
+    process.exit(1);
+  },
+);

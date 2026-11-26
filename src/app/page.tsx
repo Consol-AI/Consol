@@ -217,13 +217,13 @@ const HISTORY: {
 const FEATURES = [
   {
     icon: Boxes,
-    title: "Shared product workspaces",
+    title: "One shared workspace",
     copy: "One place for every brief, decision, and work item — visible to the whole company.",
   },
   {
     icon: Workflow,
     title: "Linked lifecycles",
-    copy: "Product, engineering, design, and data flows attached to the same product, each with its own stages.",
+    copy: "Product, engineering, design, and data flows side by side in one workspace, each with its own stages.",
   },
   {
     icon: Bot,
@@ -243,7 +243,7 @@ const FEATURES = [
   {
     icon: MessagesSquare,
     title: "Forge, in context",
-    copy: "Ask for next steps, briefs, or critiques scoped to the product, process, or item in front of you.",
+    copy: "Ask for next steps, briefs, or critiques scoped to the workspace, flow, or item in front of you.",
   },
 ];
 
@@ -266,7 +266,7 @@ const FAQ = [
   },
   {
     q: "Can I try Consol without setting anything up?",
-    a: "Yes. Open the workspace to explore products, flows, and teammates in a demo environment.",
+    a: "Yes. Open the workspace to explore flows, work, and teammates in a demo environment.",
   },
 ];
 
@@ -660,7 +660,7 @@ export default function HomePage() {
                 Everything in flight, at a glance
               </SectionTitle>
               <p className="mt-4 text-lg leading-relaxed text-zinc-600">
-                Every work item across every product, its current stage, and
+                Every work item across every flow, its current stage, and
                 who holds it right now — a person, an AI teammate, or an
                 automated script. No status meetings required.
               </p>
@@ -803,7 +803,7 @@ export default function HomePage() {
               See what your team is building — right now
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-zinc-400">
-              Open the workspace and explore products, flows, and AI teammates
+              Open the workspace and explore flows, work, and AI teammates
               in minutes.
             </p>
             <FactoryEnterLink className="mt-8 inline-flex items-center rounded-full bg-white px-6 py-3 text-sm font-medium text-zinc-950 transition hover:bg-zinc-200">

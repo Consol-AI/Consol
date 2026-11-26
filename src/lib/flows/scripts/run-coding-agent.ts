@@ -1,4 +1,5 @@
-import { getProduct, updateWorkItem } from "@/lib/factory";
+import { getCodingAgent } from "@/lib/coding-agents";
+import { updateWorkItem } from "@/lib/factory";
 import {
   createAgentRun,
   listAgentRunsForWorkItem,
@@ -6,16 +7,10 @@ import {
   updateAgentRun,
 } from "@/lib/integrations/agent-runs";
 import {
-  createCursorAgent,
-  extractPrFromRun,
-  isSuccessfulRunStatus,
-} from "@/lib/integrations/cursor/client";
-import { getCursorApiKey } from "@/lib/integrations/cursor/credentials";
-import {
   addWorkItemExternalLink,
-  getGithubConfigForProduct,
   listWorkItemExternalLinks,
 } from "@/lib/integrations";
+import { resolveRepo } from "@/lib/integrations/local";
 import type { ScriptRunInput, ScriptRunResult } from "@/lib/flows/scripts/types";
 
 function alreadyHasGithubPr(body: string): string | null {
@@ -52,7 +47,7 @@ async function linkPr(input: {
         branch: input.branch ?? "",
         agentId: input.agentId ?? "",
         dryRun: Boolean(input.dryRun),
-        source: "cursor-build",
+        source: "coding-agent",
       },
       createdBy: input.actorSub,
     });
@@ -76,16 +71,30 @@ async function linkPr(input: {
   }
 }
 
-/** Launch (or resume) a Cursor Cloud Agent build for the work item. */
-export async function runCursorBuild(
+/**
+ * Launch (or resume) a coding agent build for the work item. The provider
+ * comes from stage config `agent` (default: cursor).
+ */
+export async function runCodingAgentBuild(
   input: ScriptRunInput,
 ): Promise<ScriptRunResult> {
-  if (!input.productId || !input.workItemId || !input.processId) {
+  if (!input.organizationId || !input.workItemId || !input.processId) {
     return {
       ok: false,
       outcome: "failure",
       summary:
-        "Cursor build failed: product, process, and work item context are required.",
+        "Build failed: workspace, process, and work item context are required.",
+    };
+  }
+
+  const agentKey =
+    typeof input.config?.agent === "string" ? input.config.agent : null;
+  const agent = getCodingAgent(agentKey);
+  if (!agent) {
+    return {
+      ok: false,
+      outcome: "failure",
+      summary: `Build failed: unknown coding agent "${agentKey}".`,
     };
   }
 
@@ -109,49 +118,34 @@ export async function runCursorBuild(
     return {
       ok: true,
       outcome: "pending",
-      summary: `Cursor build already in progress (${active.status}). Agent: ${active.agent_url || active.external_agent_id}`,
+      summary: `${agent.name} build already in progress (${active.status}). Agent: ${active.agent_url || active.external_agent_id}`,
     };
   }
 
   // A finished run without a PR link yet — treat as failure so human can retry.
   const latest = runs[0];
-  if (
-    latest &&
-    latest.status.toUpperCase() === "FINISHED" &&
-    !latest.pr_url &&
-    !prUrl
-  ) {
+  if (latest && latest.status.toUpperCase() === "FINISHED" && !latest.pr_url) {
     return {
       ok: false,
       outcome: "failure",
       summary:
-        "Previous Cursor build finished without a pull request. Re-run build after fixing the agent prompt or repo access.",
+        "Previous build finished without a pull request. Re-run build after fixing the agent prompt or repo access.",
     };
   }
 
-  const product = await getProduct(input.productId);
-  if (!product) {
-    return {
-      ok: false,
-      outcome: "failure",
-      summary: "Cursor build failed: product not found.",
-    };
-  }
-
-  const config = await getGithubConfigForProduct(input.productId);
-  if (!config) {
+  const repo = await resolveRepo(input.inputs);
+  if (!repo) {
     return {
       ok: false,
       outcome: "failure",
       summary:
-        "Cursor build failed: link a default GitHub repository for this product under Connectors → GitHub.",
+        "Build failed: no GitHub repo. Set the item's repo input or CONSOL_GITHUB_REPO, or run Consol from a git checkout with a GitHub origin.",
     };
   }
 
-  const apiKey = await getCursorApiKey(product.organization_id);
-  const repoUrl = `https://github.com/${config.owner}/${config.repo}`;
+  const repoUrl = `https://github.com/${repo.owner}/${repo.repo}`;
   const prompt = [
-    `Implement this Consol work item against ${config.owner}/${config.repo}.`,
+    `Implement this Consol work item against ${repo.owner}/${repo.repo}.`,
     "",
     `# ${input.title}`,
     "",
@@ -161,75 +155,69 @@ export async function runCursorBuild(
   ].join("\n");
 
   try {
-    const created = await createCursorAgent({
-      apiKey: apiKey ?? "",
+    const launched = await agent.launch({
+      organizationId: input.organizationId,
+      workItemId: input.workItemId,
       prompt,
-      repoUrl,
-      startingRef: config.baseBranch,
-      name: input.title.slice(0, 100),
-      autoCreatePR: true,
+      title: input.title,
+      repo,
     });
-
-    const { prUrl: immediatePr, branch } = extractPrFromRun(created.run);
-    const status = created.dryRun
-      ? "FINISHED"
-      : created.run.status || "CREATING";
 
     const agentRun = await createAgentRun({
       workItemId: input.workItemId,
       processId: input.processId,
-      provider: "cursor",
-      externalAgentId: created.agent.id,
-      externalRunId: created.run.id,
-      status,
+      provider: agent.key,
+      externalAgentId: launched.externalAgentId,
+      externalRunId: launched.externalRunId,
+      status: launched.status,
       prompt,
       repoUrl,
-      branch: branch ?? "",
-      prUrl: immediatePr ?? "",
-      agentUrl: created.agent.url ?? `https://cursor.com/agents/${created.agent.id}`,
-      resultSummary: created.run.text ?? "",
-      metadata: { dryRun: created.dryRun },
+      branch: launched.branch ?? "",
+      prUrl: launched.prUrl ?? "",
+      agentUrl: launched.agentUrl,
+      resultSummary: launched.text ?? "",
+      metadata: { dryRun: launched.dryRun },
       createdBy: input.actorSub ?? "system",
     });
 
-    if (immediatePr && isSuccessfulRunStatus(status)) {
+    if (launched.prUrl && agent.isSuccessful(launched.status)) {
       await linkPr({
         workItemId: input.workItemId,
         title: input.title,
         body: input.body,
-        prUrl: immediatePr,
+        prUrl: launched.prUrl,
         actorSub: input.actorSub ?? "system",
-        branch: branch ?? undefined,
-        agentId: created.agent.id,
-        dryRun: created.dryRun,
+        branch: launched.branch ?? undefined,
+        agentId: launched.externalAgentId,
+        dryRun: launched.dryRun,
       });
       await updateAgentRun(agentRun.id, {
         status: "FINISHED",
-        prUrl: immediatePr,
-        branch: branch ?? undefined,
-        resultSummary: created.run.text ?? "Cursor build finished.",
+        prUrl: launched.prUrl,
+        branch: launched.branch ?? undefined,
+        resultSummary: launched.text ?? `${agent.name} build finished.`,
       });
       return {
         ok: true,
         outcome: "success",
-        summary: created.dryRun
-          ? `Dry-run Cursor build finished and opened ${immediatePr}`
-          : `Cursor build finished and opened ${immediatePr}`,
+        summary: launched.dryRun
+          ? `Dry-run ${agent.name} build finished and opened ${launched.prUrl}`
+          : `${agent.name} build finished and opened ${launched.prUrl}`,
       };
     }
 
     return {
       ok: true,
       outcome: "pending",
-      summary: `Cursor Cloud Agent started (${created.agent.id}). Track progress at ${agentRun.agent_url}.`,
+      summary: `${agent.name} agent started (${launched.externalAgentId}). Track progress at ${agentRun.agent_url}.`,
     };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown Cursor API error";
+      error instanceof Error ? error.message : `Unknown ${agent.name} error`;
     return {
       ok: false,
       outcome: "failure",
-      summary: `Cursor build failed: ${message}`,
+      summary: `${agent.name} build failed: ${message}`,
     };
   }
 }

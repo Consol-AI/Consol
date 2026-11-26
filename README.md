@@ -1,18 +1,17 @@
 # Consol
 
-Consol is a **product factory** for cross-functional teams: shared product workspaces where product, engineering, design, and data lifecycles live side by side, with AI in the loop.
+Consol is a **product factory** for cross-functional teams: one shared workspace where product, engineering, design, and data lifecycles live side by side, with AI in the loop.
 
 ## What you can do
 
 1. Open the factory and land on **Home** — a Forge chat for coordinating tasks and decisions across the workspace.
-2. Open **Work** to see running jobs (where you are needed) and **start a flow** with required input context — no product required.
-3. Open **Projects** to create a **product** and link teammates.
-4. Browse **Flows** to preview process templates (stages, owners, inputs, transitions) before starting or attaching them.
-5. Attach process flow templates (PM, software delivery, design, data analysis) — typed stages (`agent` / `human` / `script`) with transitions.
-6. Open **Connectors** to link external systems (GitHub first) to products.
-7. Advance **work items** through the flow (run agents, open PRs, approve human gates, run scripts).
-8. Chat with **Forge AI** on Home, a process, or a specific item.
-9. **Create teammate agents** (preset or blank) — each one is a Consol specialist and a deployable Agent SDK project under `agents/<slug>/`.
+2. Open **Work** to see running jobs (where you are needed) and **start a flow** with required input context.
+3. Browse **Flows** to preview process templates (stages, owners, inputs, transitions) before starting or attaching them.
+4. Start process flow templates (PM, software delivery, design, data analysis) — typed stages (`agent` / `human` / `script`) with transitions.
+5. Open **Connectors** to see how GitHub and Cursor are wired up.
+6. Advance **work items** through the flow (run agents, open PRs, approve human gates, run scripts).
+7. Chat with **Forge AI** on Home, a process, or a specific item.
+8. **Create teammate agents** (preset or blank) — each one is a Consol specialist and a deployable Agent SDK project under `agents/<slug>/`.
 
 ## Run locally
 
@@ -113,33 +112,42 @@ Production deploy UX for agents is intentionally out of scope for this slice.
 | `DATABASE_URL` | Postgres connection (Railway for testing, or Cursor Apps when published) |
 | `DATABASE_URL_UNPOOLED` | Direct Postgres URL for migrations |
 | `DATABASE_SSL` | Set `0` to accept Railway’s self-signed public proxy cert |
-| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key for live model replies |
-| `OPENAI_API_KEY` | Alternate live model key if Gateway is unset |
+| `ANTHROPIC_API_KEY` | Claude API key for Forge chat and agent stages (optional: the local `claude` CLI login is used otherwise) |
+| `CONSOL_MODEL` | Default model ref `<provider>:<model>` (e.g. `anthropic:claude-opus-5-5`, `claude-cli`, `openai:gpt-4o-mini`, `gateway:<model>`). Default: `ANTHROPIC_API_KEY`, then the `claude` CLI, then OpenAI, then Gateway |
+| `CONSOL_CODING_AGENT` | Build-stage coding agent: `cursor` (Cloud Agents) or `claude-code` (local `claude` CLI). Default: Cursor if `CURSOR_API_KEY` is set, else Claude Code if the CLI is installed |
+| `CONSOL_CODING_AGENT_MODEL` | Optional `--model` for local Claude Code runs |
+| `CONSOL_AGENT_ALLOWED_TOOLS` | Comma-separated tool allowlist for local Claude Code runs (default: file edits plus git status/diff/log, npm ci/install/lint/test, npx tsc) |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key (`gateway:` models) |
+| `OPENAI_API_KEY` | OpenAI key (`openai:` models) |
+| `CONSOL_GITHUB_REPO` | Default `owner/repo` for software delivery (default: this checkout's `git remote get-url origin`) |
+| `CONSOL_GITHUB_BASE_BRANCH` | Base branch for PRs (default: the remote's default branch) |
+| `GITHUB_TOKEN` / `GH_TOKEN` | GitHub token for PRs/checks/merge (default: `gh auth token`) |
 | `GITHUB_CLIENT_ID` | GitHub OAuth App client id |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret |
 | `GITHUB_OAUTH_REDIRECT_URI` | Optional callback URL override |
 | `CONNECTOR_TOKEN_SECRET` | Encrypts stored OAuth tokens (optional; falls back to client secret) |
 | `CONSOL_GITHUB_DRY_RUN` | Force dry-run PR opens (`1`) even when OAuth is connected |
-| `CURSOR_API_KEY` | Optional env fallback for Cursor Cloud Agents |
+| `CURSOR_API_KEY` | Cursor Cloud Agents key for the Build stage |
 | `CONSOL_CURSOR_DRY_RUN` | Force dry-run Cursor builds (`1`) even when a key is set |
 
-### GitHub
+### Building Consol with Consol
 
-1. Create a GitHub OAuth App with callback  
-   `http://127.0.0.1:43123/api/connectors/github/oauth/callback`  
-   and set `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
-2. Open **Connectors** → **GitHub** → **Connect with GitHub** (workspace OAuth — no product required).
-3. Optionally link a default repository to a product on the same page.
-4. Attach **Software delivery** and run **Open pull request** on a work item.
-5. Without an OAuth connection, Consol records a dry-run PR link.
+No OAuth app or UI setup needed — everything comes from your local checkout and `.env.local`:
 
-### Cursor Cloud Agents
+1. `gh auth login` (Consol uses `gh auth token` for PRs, checks, and merges), or set `GITHUB_TOKEN`.
+2. Log in to the `claude` CLI. With no keys set, Forge chat and agent stages use it, and the Build stage runs **Claude Code locally**: a worktree of a Consol-managed clone under `.data/repos`, restricted to file edits plus a short shell allowlist. Consol then commits, pushes with your `gh` login, and opens the PR. Logs: `.data/agent-runs/<run>/agent.log`.
+   To use Cursor Cloud Agents instead, set `CURSOR_API_KEY` (Cursor's GitHub app needs repo access). `ANTHROPIC_API_KEY` switches text generation to the API.
+3. The default repo is this checkout's `origin` (override with `CONSOL_GITHUB_REPO`, or per work item via the **Repository** input).
+4. From **Home** chat say "ship: add a footer changelog link" (or "ship on owner/repo: …"), or use **Work → Start flow → Software delivery**.
+5. Approve the spec — the coding agent opens a PR, **Validate** waits on the repo's CI checks, then you approve ship and Consol merges.
+6. Without a Cursor key / GitHub token (or with `CONSOL_CURSOR_DRY_RUN=1` / `CONSOL_GITHUB_DRY_RUN=1`), those steps run as dry-runs.
 
-1. Open **Connectors** → **Cursor** and paste a Cursor API key (Dashboard → API Keys), or set `CURSOR_API_KEY`.
-2. Bind a product repo under **Connectors** → **GitHub** (demo default: `leaguesports/landing-page`).
-3. From **Home** chat, ask Forge to ship a LeagueSports feature and confirm start.
-4. Approve the spec — Consol launches a Cloud Agent, opens a PR, validates checks, then waits for ship approval before merging.
-5. Without a Cursor key (or with `CONSOL_CURSOR_DRY_RUN=1`), builds run in dry-run mode.
+**Connectors → GitHub** shows which repo and credentials are in use. Workspace OAuth (`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`) still works and takes priority when connected.
+
+### Models and coding agents
+
+- Text models are interchangeable via `CONSOL_MODEL` or a per-stage `model` in a flow definition (`src/lib/models/`).
+- The Build stage's coding agent is picked by the stage's `agent` config (`auto` by default; see `CONSOL_CODING_AGENT`; providers in `src/lib/coding-agents/`).
 
 Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `cursor-app.json` declares a Postgres database. For Railway testing, prefer `npm run db:railway-env`.
 
@@ -148,5 +156,5 @@ Do not commit secrets. Published apps get `DATABASE_URL` from Cursor when `curso
 - Next.js App Router + TypeScript + Tailwind + shadcn/ui
 - Cursor app identity for private/team viewers
 - Postgres via `pg`, with PGlite locally
-- Vercel AI SDK for Forge chat
+- Anthropic SDK (Claude) by default, Vercel AI SDK for OpenAI / Gateway models
 - `@grok/agent-sdk` projects under `agents/` for teammate specialists

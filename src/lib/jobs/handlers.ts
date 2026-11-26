@@ -5,7 +5,7 @@ import {
   isActiveAgentRunStatus,
   listAgentRunsForWorkItem,
 } from "@/lib/integrations/agent-runs";
-import { pollAgentRun } from "@/lib/integrations/cursor/poll";
+import { pollAgentRun } from "@/lib/coding-agents/poll";
 import {
   enqueueAgentRunPoll,
   type AgentRunPollPayload,

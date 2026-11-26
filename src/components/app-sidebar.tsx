@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   Briefcase,
   Cable,
-  FolderKanban,
   GitBranch,
   Home,
   Users,
@@ -22,7 +21,6 @@ const NAV: {
 }[] = [
   { href: "/app", label: "Home", icon: Home, exact: true },
   { href: "/app/work", label: "Work", icon: Briefcase },
-  { href: "/app/projects", label: "Projects", icon: FolderKanban },
   { href: "/app/flows", label: "Flows", icon: GitBranch },
   { href: "/app/connectors", label: "Connectors", icon: Cable },
   { href: "/app/teammates", label: "Teammates", icon: Users },

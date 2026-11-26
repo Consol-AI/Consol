@@ -10,6 +10,8 @@ export type AgentStage = {
   rolePrompt: string;
   allowedTools: AgentToolName[];
   agentKey?: string;
+  /** Model ref "<provider>:<model>" (e.g. anthropic:claude-opus-5-5); default CONSOL_MODEL. */
+  model?: string;
 };
 
 export type HumanStage = {
@@ -30,6 +32,8 @@ export type ScriptStage = {
   path?: string;
   /** Optional inline script source (simple predicate language). */
   inline?: string;
+  /** Coding agent for the coding-agent script: "cursor", "claude-code", or "auto" (default). */
+  agent?: string;
 };
 
 export type FlowStage = AgentStage | HumanStage | ScriptStage;
