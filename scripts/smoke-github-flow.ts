@@ -1,5 +1,5 @@
 /**
- * End-to-end dry-run of software delivery through Cursor build + validate.
+ * End-to-end dry-run of software delivery through coding-agent build + validate.
  * Run: npx tsx scripts/smoke-github-flow.ts
  */
 process.env.CONSOL_GITHUB_DRY_RUN = "1";
@@ -11,37 +11,24 @@ delete process.env.CURSOR_API_KEY;
 import { createId } from "../src/lib/id";
 import { sql } from "../src/lib/db";
 import {
-  addProcessFromTemplate,
   createWorkItem,
+  ensureOrgProcess,
   getWorkItem,
   listStages,
   listStageRunEvents,
 } from "../src/lib/factory";
-import { listWorkItemExternalLinks, upsertGithubIntegration } from "../src/lib/integrations";
+import { listWorkItemExternalLinks } from "../src/lib/integrations";
 import { advanceWorkItem } from "../src/lib/flows/runtime";
 
 async function main() {
   const orgId = createId("org");
-  const productId = createId("prd");
   await sql(
     `insert into organizations (id, name, slug, created_by) values ($1, $2, $3, $4)`,
     [orgId, "Flow Org", `flow-${orgId.slice(-8)}`, "smoke"],
   );
-  await sql(
-    `insert into products (id, organization_id, name, description, created_by)
-     values ($1, $2, $3, $4, $5)`,
-    [productId, orgId, "Flow Product", "", "smoke"],
-  );
 
-  await upsertGithubIntegration({
-    productId,
-    owner: "leaguesports",
-    repo: "landing-page",
-    createdBy: "smoke",
-  });
-
-  const deliveryProcess = await addProcessFromTemplate({
-    productId,
+  const deliveryProcess = await ensureOrgProcess({
+    organizationId: orgId,
     templateKey: "software-delivery",
     createdBy: "smoke",
   });
@@ -52,6 +39,7 @@ async function main() {
     stageId: entry.id,
     title: "End-to-end Cursor build",
     body: "Acceptance criteria: PR opens.\nImplementation: change files under src/.",
+    inputs: { repo: "acme/widget" },
     createdBy: "smoke",
   });
 

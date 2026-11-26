@@ -1,12 +1,11 @@
-import { getProduct, updateWorkItem } from "@/lib/factory";
+import { updateWorkItem } from "@/lib/factory";
 import {
   addWorkItemExternalLink,
   createGithubPullRequest,
-  getGithubConfigForProduct,
   githubHeadBranchName,
   listWorkItemExternalLinks,
 } from "@/lib/integrations";
-import { getOrganizationAccessToken } from "@/lib/integrations/connections";
+import { getGithubToken, resolveRepo } from "@/lib/integrations/local";
 import type { ScriptRunInput, ScriptRunResult } from "@/lib/flows/scripts/types";
 
 function alreadyHasGithubPr(body: string): string | null {
@@ -20,12 +19,12 @@ function alreadyHasGithubPr(body: string): string | null {
 export async function runOpenPullRequest(
   input: ScriptRunInput,
 ): Promise<ScriptRunResult> {
-  if (!input.productId || !input.workItemId) {
+  if (!input.workItemId) {
     return {
       ok: false,
       outcome: "failure",
       summary:
-        "Open PR failed: product and work item context are required for GitHub.",
+        "Open PR failed: work item context is required for GitHub.",
     };
   }
 
@@ -50,27 +49,15 @@ export async function runOpenPullRequest(
     };
   }
 
-  const product = await getProduct(input.productId);
-  if (!product) {
-    return {
-      ok: false,
-      outcome: "failure",
-      summary: "Open PR failed: product not found.",
-    };
-  }
+  const accessToken = await getGithubToken(input.organizationId);
 
-  const accessToken = await getOrganizationAccessToken(
-    product.organization_id,
-    "github",
-  );
-
-  const config = await getGithubConfigForProduct(input.productId);
+  const config = await resolveRepo(input.inputs);
   if (!config) {
     return {
       ok: false,
       outcome: "failure",
       summary:
-        "Open PR failed: link a default GitHub repository for this product under Connectors → GitHub.",
+        "Open PR failed: no GitHub repo. Set the item's repo input or CONSOL_GITHUB_REPO, or run Consol from a git checkout with a GitHub origin.",
     };
   }
 
@@ -134,7 +121,7 @@ export async function runOpenPullRequest(
       `---`,
       `### Pull request`,
       pull.dryRun
-        ? `Dry-run draft PR [#${pull.number}](${pull.htmlUrl}) (\`${pull.head}\` → \`${pull.base}\`). Connect GitHub under Connectors to open a real PR.`
+        ? `Dry-run draft PR [#${pull.number}](${pull.htmlUrl}) (\`${pull.head}\` → \`${pull.base}\`). Log in with gh auth login or set GITHUB_TOKEN to open a real PR.`
         : `Draft PR [#${pull.number}](${pull.htmlUrl}) (\`${pull.head}\` → \`${pull.base}\`).`,
     ]
       .join("\n")

@@ -2,7 +2,6 @@ import {
   addMessage,
   addStageRunEvent,
   getProcess,
-  getProduct,
   getWorkItem,
   listStages,
   updateWorkItem,
@@ -12,13 +11,7 @@ import {
   updateAgentRun,
   type AgentRun,
 } from "@/lib/integrations/agent-runs";
-import {
-  extractPrFromRun,
-  getCursorRun,
-  isSuccessfulRunStatus,
-  isTerminalRunStatus,
-} from "@/lib/integrations/cursor/client";
-import { getCursorApiKey } from "@/lib/integrations/cursor/credentials";
+import { getCodingAgent } from "@/lib/coding-agents";
 import {
   addWorkItemExternalLink,
   listWorkItemExternalLinks,
@@ -51,7 +44,7 @@ async function ensurePrLinked(input: {
         branch: input.branch ?? "",
         agentId: input.agentId ?? "",
         dryRun: Boolean(input.dryRun),
-        source: "cursor-poll",
+        source: "coding-agent-poll",
       },
       createdBy: input.actorSub,
     });
@@ -103,11 +96,7 @@ export async function pollAgentRun(
       summary: "Process missing",
     };
   }
-  const product = process.product_id
-    ? await getProduct(process.product_id)
-    : null;
-  const organizationId =
-    product?.organization_id ?? process.organization_id ?? null;
+  const organizationId = process.organization_id ?? null;
   if (!organizationId) {
     return {
       run,
@@ -117,21 +106,31 @@ export async function pollAgentRun(
     };
   }
 
-  const apiKey = (await getCursorApiKey(organizationId)) ?? "";
+  const agent = getCodingAgent(run.provider);
+  if (!agent) {
+    return {
+      run,
+      changed: false,
+      advanced: false,
+      summary: `Unknown coding agent provider: ${run.provider}`,
+    };
+  }
+  const label = agent.name;
+
   let remote;
   try {
-    remote = await getCursorRun({
-      apiKey,
-      agentId: run.external_agent_id,
-      runId: run.external_run_id,
+    remote = await agent.poll({
+      organizationId,
+      externalAgentId: run.external_agent_id,
+      externalRunId: run.external_run_id,
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Cursor poll failed";
+      error instanceof Error ? error.message : `${label} poll failed`;
     return { run, changed: false, advanced: false, summary: message };
   }
 
-  const { prUrl, branch } = extractPrFromRun(remote);
+  const { prUrl, branch } = remote;
   const nextStatus = remote.status || run.status;
   const changed =
     nextStatus !== run.status ||
@@ -149,23 +148,23 @@ export async function pollAgentRun(
     });
   }
 
-  if (!isTerminalRunStatus(nextStatus)) {
+  if (!agent.isTerminal(nextStatus)) {
     return {
       run: updated,
       changed,
       advanced: false,
-      summary: `Cursor run ${nextStatus}`,
+      summary: `${label} run ${nextStatus}`,
     };
   }
 
-  if (!isSuccessfulRunStatus(nextStatus)) {
+  if (!agent.isSuccessful(nextStatus)) {
     await addStageRunEvent({
       workItemId: item.id,
       processId: process.id,
       stageKey: "build",
       stageType: "script",
       outcome: "failure",
-      summary: `Cursor build ${nextStatus}: ${remote.text || "no details"}`,
+      summary: `${label} build ${nextStatus}: ${remote.text || "no details"}`,
       createdBy: actorSub,
       metadata: {
         agentRunId: run.id,
@@ -176,14 +175,14 @@ export async function pollAgentRun(
       processId: process.id,
       workItemId: item.id,
       role: "system",
-      content: `Cursor build ended with ${nextStatus}.`,
-      authorName: "Cursor",
+      content: `${label} build ended with ${nextStatus}.`,
+      authorName: label,
     });
     return {
       run: updated,
       changed: true,
       advanced: false,
-      summary: `Cursor build ${nextStatus}`,
+      summary: `${label} build ${nextStatus}`,
     };
   }
 
@@ -204,8 +203,8 @@ export async function pollAgentRun(
   const onBuild = current?.stage_key === "build";
   let advanced = false;
   let summary = prUrl
-    ? `Cursor build finished with PR ${prUrl}`
-    : "Cursor build finished";
+    ? `${label} build finished with PR ${prUrl}`
+    : `${label} build finished`;
 
   if (onBuild && prUrl) {
     const advance = await advanceWorkItem({
@@ -239,11 +238,11 @@ export async function pollAgentRun(
       stageKey: "build",
       stageType: "script",
       outcome: "failure",
-      summary: "Cursor build finished without a pull request URL.",
+      summary: `${label} build finished without a pull request URL.`,
       createdBy: actorSub,
       metadata: { agentRunId: run.id },
     });
-    summary = "Cursor build finished without a pull request URL.";
+    summary = `${label} build finished without a pull request URL.`;
   }
 
   return { run: updated, changed: true, advanced, summary };

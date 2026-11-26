@@ -66,7 +66,6 @@ export default async function WorkItemPage({
         <span className="text-[var(--console-muted)]">{process.name}</span>
       </div>
       <IssueFocus
-        productId={process.product_id}
         processId={process.id}
         item={item}
         stages={stages}

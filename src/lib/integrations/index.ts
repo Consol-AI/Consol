@@ -1,22 +1,20 @@
 export {
   addWorkItemExternalLink,
-  clearProductIntegration,
-  getGithubConfigForProduct,
-  getProductIntegration,
-  listProductIntegrations,
   listLatestPullRequestLinks,
   listWorkItemExternalLinks,
-  parseGithubConfig,
-  parseIntegrationConfig,
-  upsertGithubIntegration,
 } from "@/lib/integrations/store";
 export type {
   GithubIntegrationConfig,
   IntegrationProvider,
-  IntegrationStatus,
-  ProductIntegration,
   WorkItemExternalLink,
 } from "@/lib/integrations/types";
+export {
+  getGithubToken,
+  getGithubTokenWithSource,
+  parseOwnerRepo,
+  resolveRepo,
+} from "@/lib/integrations/local";
+export type { ResolvedRepo } from "@/lib/integrations/local";
 export {
   createGithubPullRequest,
   getGithubCheckSummary,

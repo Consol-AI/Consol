@@ -26,6 +26,28 @@ import {
   startSoftwareDelivery,
 } from "../src/lib/delivery/start";
 import { softwareDeliveryFlow } from "../src/lib/flows/software-delivery";
+import { startWorker } from "../src/lib/jobs/worker";
+
+/** Stages run on the job worker; wait until the item reaches `stageKey`. */
+async function waitForStage(
+  itemId: string,
+  processId: string,
+  stageKeys: string[],
+  timeoutMs = 60_000,
+): Promise<string> {
+  const start = Date.now();
+  let last = "";
+  while (Date.now() - start < timeoutMs) {
+    const item = await getWorkItem(itemId);
+    const stage = (await listStages(processId)).find(
+      (s) => s.id === item?.stage_id,
+    );
+    last = stage?.stage_key ?? "";
+    if (stageKeys.includes(last)) return last;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  throw new Error(`Timed out waiting for ${stageKeys.join("/")}; at ${last}`);
+}
 
 async function main() {
   const stageIds = softwareDeliveryFlow.stages.map((s) => s.id);
@@ -42,10 +64,17 @@ async function main() {
   }
 
   const intent = parseDeliveryIntent(
-    "Ship a feature on LeagueSports: add a subtle footer changelog link",
+    "Ship on acme/widget: add a subtle footer changelog link",
   );
-  if (!intent.wantsDelivery) {
-    throw new Error("Expected delivery intent");
+  if (
+    !intent.wantsDelivery ||
+    intent.repo !== "acme/widget" ||
+    intent.title !== "add a subtle footer changelog link"
+  ) {
+    throw new Error(`Unexpected delivery intent: ${JSON.stringify(intent)}`);
+  }
+  if (!parseDeliveryIntent("ship: add a footer link").wantsDelivery) {
+    throw new Error("Expected plain 'ship:' to parse as delivery intent");
   }
 
   const orgId = createId("org");
@@ -59,10 +88,14 @@ async function main() {
     actorSub: "smoke",
     title: intent.title,
     body: intent.body,
+    repo: intent.repo,
     runSpec: true,
   });
 
   console.log("started", started.href, "stage→", started.item.stage_id);
+
+  const worker = startWorker({ concurrency: 2, pollIntervalMs: 100, log: () => {} });
+  await waitForStage(started.item.id, started.process.id, ["spec-approve"]);
 
   let stages = await listStages(started.process.id);
   let item = await getWorkItem(started.item.id);
@@ -79,6 +112,9 @@ async function main() {
     actorSub: "smoke",
   });
   console.log("spec-approve→", result.toStageKey, result.summary);
+  // Worker runs build (dry-run) → validate → parks on ship-approve.
+  await waitForStage(started.item.id, started.process.id, ["ship-approve"]);
+  await worker.stop();
 
   // Build may already have auto-advanced through validate if dry-run finished.
   // Explicitly execute build if still there.

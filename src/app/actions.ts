@@ -15,11 +15,8 @@ import {
   type AdvanceOutcome,
 } from "@/lib/flows/runtime";
 import {
-  addProcessFromTemplate,
   assertOrgAccess,
   assertProcessAccess,
-  assertProductAccess,
-  createProduct,
   createWorkItem,
   ensureOrgProcess,
   ensureWorkspace,
@@ -33,10 +30,6 @@ import {
 } from "@/lib/factory";
 import { workItemHref } from "@/lib/work-links";
 import {
-  clearProductIntegration,
-  upsertGithubIntegration,
-} from "@/lib/integrations";
-import {
   deleteOrganizationConnection,
   getOrganizationAccessToken,
 } from "@/lib/integrations/connections";
@@ -46,91 +39,9 @@ import {
   revokeGithubToken,
 } from "@/lib/integrations/github/oauth";
 
-function revalidateWorkPaths(input: {
-  processId: string;
-  productId?: string | null;
-  itemId?: string;
-}) {
+function revalidateWorkPaths(input: { itemId?: string }) {
   revalidatePath("/app/work");
   if (input.itemId) revalidatePath(`/app/work/${input.itemId}`);
-  if (input.productId) {
-    revalidatePath(
-      `/app/products/${input.productId}/processes/${input.processId}`,
-    );
-  }
-}
-
-export async function createProductAction(formData: FormData) {
-  const viewer = await requireViewer();
-  const org = await ensureWorkspace(viewer);
-  const name = String(formData.get("name") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  if (!name) throw new Error("Product name is required");
-
-  const product = await createProduct({
-    organizationId: org.id,
-    name,
-    description,
-    createdBy: viewer.sub,
-  });
-  redirect(`/app/products/${product.id}`);
-}
-
-export async function addProcessAction(formData: FormData) {
-  const viewer = await requireViewer();
-  const productId = String(formData.get("productId") ?? "");
-  const templateKey = String(formData.get("templateKey") ?? "");
-  const product = await assertProductAccess(productId, viewer.sub);
-  if (!product) throw new Error("Forbidden");
-
-  const process = await addProcessFromTemplate({
-    productId,
-    templateKey,
-    createdBy: viewer.sub,
-  });
-  revalidatePath(`/app/products/${productId}`);
-  redirect(`/app/products/${productId}/processes/${process.id}`);
-}
-
-export async function createWorkItemAction(formData: FormData) {
-  const viewer = await requireViewer();
-  const processId = String(formData.get("processId") ?? "");
-  const stageId = String(formData.get("stageId") ?? "");
-  const title = String(formData.get("title") ?? "").trim();
-  const body = String(formData.get("body") ?? "").trim();
-  if (!title) throw new Error("Title is required");
-
-  const process = await assertProcessAccess(processId, viewer.sub);
-  if (!process) throw new Error("Forbidden");
-
-  const stages = await listStages(processId);
-  const flow = getFlow(process.template_key);
-  const entry =
-    (flow
-      ? stages.find((s) => s.stage_key === flow.entry)
-      : null) ??
-    stages.find((s) => s.id === stageId) ??
-    stages[0];
-  if (!entry) throw new Error("No stages");
-
-  const item = await createWorkItem({
-    processId,
-    stageId: entry.id,
-    title,
-    body,
-    createdBy: viewer.sub,
-  });
-  await queueStageIfAutomated({
-    itemId: item.id,
-    stage: entry,
-    actorSub: viewer.sub,
-  });
-  revalidateWorkPaths({
-    processId,
-    productId: process.product_id,
-    itemId: item.id,
-  });
-  return item.id;
 }
 
 export type StartWorkFlowState = {
@@ -190,12 +101,8 @@ export async function startWorkFlowAction(
     actorSub: viewer.sub,
   });
 
-  revalidateWorkPaths({
-    processId: process.id,
-    productId: null,
-    itemId: item.id,
-  });
-  redirect(workItemHref({ id: item.id, process_id: process.id, product_id: null }));
+  revalidateWorkPaths({ itemId: item.id });
+  redirect(workItemHref(item));
 }
 
 export async function moveWorkItemAction(formData: FormData) {
@@ -230,11 +137,7 @@ export async function moveWorkItemAction(formData: FormData) {
   if (target) {
     await queueStageIfAutomated({ itemId, stage: target, actorSub: viewer.sub });
   }
-  revalidateWorkPaths({
-    processId: process.id,
-    productId: process.product_id,
-    itemId,
-  });
+  revalidateWorkPaths({ itemId });
 }
 
 export async function advanceWorkItemAction(formData: FormData) {
@@ -255,11 +158,7 @@ export async function advanceWorkItemAction(formData: FormData) {
         actorSub: viewer.sub,
         execute: false,
       });
-  revalidateWorkPaths({
-    processId: process.id,
-    productId: process.product_id,
-    itemId,
-  });
+  revalidateWorkPaths({ itemId });
   return result;
 }
 
@@ -274,50 +173,7 @@ export async function updateWorkItemAction(formData: FormData) {
   if (!process) throw new Error("Forbidden");
 
   await updateWorkItem({ itemId, title, body });
-  revalidateWorkPaths({
-    processId: process.id,
-    productId: process.product_id,
-    itemId,
-  });
-}
-
-export async function saveGithubIntegrationAction(formData: FormData) {
-  const viewer = await requireViewer();
-  const productId = String(formData.get("productId") ?? "");
-  const owner = String(formData.get("owner") ?? "").trim();
-  const repo = String(formData.get("repo") ?? "").trim();
-  const baseBranch = String(formData.get("baseBranch") ?? "main").trim();
-  const headBranchPrefix = String(
-    formData.get("headBranchPrefix") ?? "consol/",
-  ).trim();
-
-  const product = await assertProductAccess(productId, viewer.sub);
-  if (!product) throw new Error("Forbidden");
-  if (!owner || !repo) throw new Error("Owner and repository are required");
-
-  await upsertGithubIntegration({
-    productId,
-    owner,
-    repo,
-    baseBranch,
-    headBranchPrefix,
-    createdBy: viewer.sub,
-  });
-  revalidatePath("/app/connectors");
-  revalidatePath("/app/connectors/github");
-  revalidatePath(`/app/products/${productId}`);
-}
-
-export async function clearGithubIntegrationAction(formData: FormData) {
-  const viewer = await requireViewer();
-  const productId = String(formData.get("productId") ?? "");
-  const product = await assertProductAccess(productId, viewer.sub);
-  if (!product) throw new Error("Forbidden");
-
-  await clearProductIntegration(productId, "github");
-  revalidatePath("/app/connectors");
-  revalidatePath("/app/connectors/github");
-  revalidatePath(`/app/products/${productId}`);
+  revalidateWorkPaths({ itemId });
 }
 
 export async function disconnectGithubOauthAction() {
@@ -380,7 +236,7 @@ export async function clearCursorApiKeyAction() {
 export async function startSoftwareDeliveryAction(input: {
   title: string;
   body?: string;
-  productId?: string;
+  repo?: string;
   runSpec?: boolean;
 }) {
   const viewer = await requireViewer();
@@ -395,19 +251,14 @@ export async function startSoftwareDeliveryAction(input: {
     actorSub: viewer.sub,
     title: input.title,
     body: input.body,
-    productId: input.productId,
+    repo: input.repo,
     runSpec: input.runSpec,
   });
 
   revalidatePath("/app");
-  revalidatePath("/app/projects");
-  revalidatePath(`/app/products/${result.product.id}`);
-  revalidatePath(
-    `/app/products/${result.product.id}/processes/${result.process.id}`,
-  );
+  revalidateWorkPaths({ itemId: result.item.id });
 
   return {
-    productId: result.product.id,
     processId: result.process.id,
     itemId: result.item.id,
     href: result.href,

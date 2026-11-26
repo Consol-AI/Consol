@@ -1,10 +1,9 @@
-import { getProduct } from "@/lib/factory";
 import {
   getGithubCheckSummary,
   getGithubPullRequestFromUrl,
   parseGithubPrUrl,
 } from "@/lib/integrations/github/client";
-import { getOrganizationAccessToken } from "@/lib/integrations/connections";
+import { getGithubToken } from "@/lib/integrations/local";
 import { listWorkItemExternalLinks } from "@/lib/integrations";
 import type { ScriptRunInput, ScriptRunResult } from "@/lib/flows/scripts/types";
 
@@ -19,11 +18,11 @@ function prFromBody(body: string): string | null {
 export async function runValidatePrChecks(
   input: ScriptRunInput,
 ): Promise<ScriptRunResult> {
-  if (!input.productId || !input.workItemId) {
+  if (!input.workItemId) {
     return {
       ok: false,
       outcome: "failure",
-      summary: "Validate failed: product and work item are required.",
+      summary: "Validate failed: work item is required.",
     };
   }
 
@@ -40,19 +39,7 @@ export async function runValidatePrChecks(
     };
   }
 
-  const product = await getProduct(input.productId);
-  if (!product) {
-    return {
-      ok: false,
-      outcome: "failure",
-      summary: "Validate failed: product not found.",
-    };
-  }
-
-  const token = await getOrganizationAccessToken(
-    product.organization_id,
-    "github",
-  );
+  const token = await getGithubToken(input.organizationId);
 
   const parsed = parseGithubPrUrl(prUrl);
   if (!parsed) {

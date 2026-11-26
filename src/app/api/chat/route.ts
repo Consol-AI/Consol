@@ -1,11 +1,8 @@
-import { streamText } from "ai";
 import { getIdentity } from "../../../../cursor/identity";
-import {
-  formatWorkspaceBriefForPrompt,
-  getLanguageModel,
-  mockAssistantReply,
-} from "@/lib/ai";
+import { formatWorkspaceBriefForPrompt, mockAssistantReply } from "@/lib/ai";
 import { parseDeliveryIntent, startSoftwareDelivery } from "@/lib/delivery/start";
+import { resolveRepo } from "@/lib/integrations/local";
+import { getTextModel } from "@/lib/models";
 import {
   addMessage,
   assertOrgAccess,
@@ -29,6 +26,7 @@ type ChatBody = {
   confirmDelivery?: boolean;
   deliveryTitle?: string;
   deliveryBody?: string;
+  deliveryRepo?: string;
 };
 
 export async function POST(request: Request) {
@@ -54,7 +52,7 @@ export async function POST(request: Request) {
   }
 
   let processId = body.processId ?? null;
-  let workItemId = body.workItemId ?? null;
+  const workItemId = body.workItemId ?? null;
   let organizationId = body.organizationId ?? null;
   let contextLabel = "this workspace";
   let stageNames: string[] = [];
@@ -108,6 +106,7 @@ export async function POST(request: Request) {
           wantsDelivery: true,
           title: (body.deliveryTitle || message).trim(),
           body: (body.deliveryBody || message).trim(),
+          repo: body.deliveryRepo?.trim() || undefined,
         }
       : parseDeliveryIntent(message);
 
@@ -118,10 +117,11 @@ export async function POST(request: Request) {
           actorSub: viewer.sub,
           title: intent.title,
           body: intent.body,
+          repo: intent.repo,
           runSpec: true,
         });
         const reply = [
-          `Started **software delivery** for **${started.product.name}**.`,
+          `Started **software delivery** on \`${started.repo.owner}/${started.repo.repo}\`.`,
           "",
           `**${started.item.title}**`,
           started.specSummary
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
           "",
           `Open it: ${started.href}`,
           "",
-          "Next: approve the spec, then Consol will launch a Cursor Cloud Agent to build and open a PR.",
+          "Next: approve the spec, then Consol launches a coding agent to build and open a PR.",
         ].join("\n");
         await addMessage({
           organizationId,
@@ -146,7 +146,6 @@ export async function POST(request: Request) {
             started: true,
             href: started.href,
             itemId: started.item.id,
-            productId: started.product.id,
             processId: started.process.id,
             title: started.item.title,
           },
@@ -166,14 +165,17 @@ export async function POST(request: Request) {
     }
 
     if (intent.wantsDelivery && !body.confirmDelivery) {
-      const reply = [
-        `I can start a **software delivery** on **LeagueSports** (repo \`leaguesports/landing-page\`) for:`,
-        "",
-        `**${intent.title}**`,
-        "",
-        "Flow: Spec → Approve spec → Cursor build → Validate → Approve ship → Merge.",
-        "Confirm and I'll create the work item, draft the spec, and park it on Approve spec.",
-      ].join("\n");
+      const repo = await resolveRepo(intent.repo ? { repo: intent.repo } : null);
+      const reply = repo
+        ? [
+            `I can start a **software delivery** on \`${repo.owner}/${repo.repo}\` (base \`${repo.baseBranch}\`) for:`,
+            "",
+            `**${intent.title}**`,
+            "",
+            "Flow: Spec → Approve spec → Build (coding agent) → Validate → Approve ship → Merge.",
+            "Confirm and I'll create the work item, draft the spec, and park it on Approve spec.",
+          ].join("\n")
+        : "I couldn't find a GitHub repo to deliver to. Set `CONSOL_GITHUB_REPO=owner/repo` in .env.local, or name one: \"ship on owner/repo: …\".";
       await addMessage({
         organizationId,
         role: "assistant",
@@ -187,12 +189,13 @@ export async function POST(request: Request) {
           needsConfirm: true,
           title: intent.title,
           body: intent.body,
+          repo: repo ? `${repo.owner}/${repo.repo}` : null,
         },
       });
     }
   }
 
-  const model = getLanguageModel();
+  const model = getTextModel();
   if (!model) {
     const reply = mockAssistantReply({
       userMessage: message,
@@ -214,10 +217,10 @@ export async function POST(request: Request) {
   const system = workspaceBriefText
     ? [
         "You are Forge, the AI coordinator on the Consol product-factory home screen.",
-        "Help the user coordinate tasks and decisions across projects, processes, and teammates.",
+        "Help the user coordinate tasks and decisions across flows, work items, and teammates.",
         "Be concrete and concise. Surface what needs a human decision first, then agent work, then waiting items.",
-        "When useful, point to a project or work item by name and suggest the next decision or handoff.",
-        "Users can start a LeagueSports software delivery from chat (spec → approve → Cursor build → validate → approve → merge).",
+        "When useful, point to a work item by name and suggest the next decision or handoff.",
+        "Users can start a software delivery from chat, e.g. \"ship: add a footer link\" (spec → approve → coding agent build → validate → approve → merge).",
         "Do not invent work that is not in the workspace brief unless the user asks to draft something new.",
         "",
         `Workspace brief:\n${workspaceBriefText}`,
@@ -232,21 +235,43 @@ export async function POST(request: Request) {
         .filter(Boolean)
         .join(" ");
 
-  const result = streamText({
-    model,
-    system,
-    prompt: message,
-    onFinish: async ({ text }) => {
-      await addMessage({
-        organizationId,
-        processId,
-        workItemId,
-        role: "assistant",
-        content: text,
-        authorName: "Forge AI",
-      });
+  const textModel = model;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let text = "";
+      try {
+        for await (const chunk of textModel.stream({
+          system,
+          messages: [{ role: "user", content: message }],
+          effort: "low",
+        })) {
+          text += chunk;
+          controller.enqueue(encoder.encode(chunk));
+        }
+      } catch (error) {
+        const detail =
+          error instanceof Error ? error.message : "Model request failed";
+        const note = `\n\n_Model error (${textModel.ref}): ${detail}_`;
+        text += note;
+        controller.enqueue(encoder.encode(note));
+      } finally {
+        controller.close();
+        if (text.trim()) {
+          await addMessage({
+            organizationId,
+            processId,
+            workItemId,
+            role: "assistant",
+            content: text,
+            authorName: "Forge AI",
+          });
+        }
+      }
     },
   });
 
-  return result.toTextStreamResponse();
+  return new Response(stream, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }

@@ -1,102 +1,11 @@
 import { sql } from "@/lib/db";
 import { createId } from "@/lib/id";
-import {
-  parseGithubConfig,
-  type GithubIntegrationConfig,
-  type ProductIntegration,
-  type WorkItemExternalLink,
-} from "@/lib/integrations/types";
+import type { WorkItemExternalLink } from "@/lib/integrations/types";
 
 export type {
   GithubIntegrationConfig,
-  ProductIntegration,
   WorkItemExternalLink,
 } from "@/lib/integrations/types";
-export {
-  parseGithubConfig,
-  parseIntegrationConfig,
-} from "@/lib/integrations/types";
-
-export async function listProductIntegrations(
-  productId: string,
-): Promise<ProductIntegration[]> {
-  return sql<ProductIntegration>(
-    `select * from product_integrations
-     where product_id = $1
-     order by provider asc`,
-    [productId],
-  );
-}
-
-export async function getProductIntegration(
-  productId: string,
-  provider: string,
-): Promise<ProductIntegration | null> {
-  return (
-    (
-      await sql<ProductIntegration>(
-        `select * from product_integrations
-         where product_id = $1 and provider = $2
-         limit 1`,
-        [productId, provider],
-      )
-    )[0] ?? null
-  );
-}
-
-export async function upsertGithubIntegration(input: {
-  productId: string;
-  owner: string;
-  repo: string;
-  baseBranch?: string;
-  headBranchPrefix?: string;
-  createdBy: string;
-}): Promise<ProductIntegration> {
-  const owner = input.owner.trim();
-  const repo = input.repo.trim();
-  if (!owner || !repo) {
-    throw new Error("GitHub owner and repository are required");
-  }
-
-  const config: GithubIntegrationConfig = {
-    owner,
-    repo,
-    baseBranch: (input.baseBranch ?? "main").trim() || "main",
-    headBranchPrefix: (input.headBranchPrefix ?? "consol/").trim() || "consol/",
-  };
-
-  const existing = await getProductIntegration(input.productId, "github");
-  if (existing) {
-    await sql(
-      `update product_integrations
-       set config = $1::jsonb,
-           status = 'configured',
-           updated_at = now()
-       where id = $2`,
-      [JSON.stringify(config), existing.id],
-    );
-    return (await getProductIntegration(input.productId, "github"))!;
-  }
-
-  const id = createId("int");
-  await sql(
-    `insert into product_integrations (
-       id, product_id, provider, status, config, created_by
-     ) values ($1, $2, 'github', 'configured', $3::jsonb, $4)`,
-    [id, input.productId, JSON.stringify(config), input.createdBy],
-  );
-  return (await getProductIntegration(input.productId, "github"))!;
-}
-
-export async function clearProductIntegration(
-  productId: string,
-  provider: string,
-): Promise<void> {
-  await sql(
-    `delete from product_integrations where product_id = $1 and provider = $2`,
-    [productId, provider],
-  );
-}
 
 export async function listWorkItemExternalLinks(
   workItemId: string,
@@ -156,12 +65,4 @@ export async function addWorkItemExternalLink(input: {
       [id],
     )
   )[0];
-}
-
-export async function getGithubConfigForProduct(
-  productId: string,
-): Promise<GithubIntegrationConfig | null> {
-  const row = await getProductIntegration(productId, "github");
-  if (!row || row.status === "disabled") return null;
-  return parseGithubConfig(row.config);
 }

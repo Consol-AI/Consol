@@ -1,16 +1,9 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import {
-  GithubIntegrationForm,
-  type GithubProductOption,
-} from "@/components/github-integration-form";
 import { GithubOauthCard } from "@/components/github-oauth-card";
 import { getViewer } from "@/lib/auth";
-import { ensureWorkspace, listProducts } from "@/lib/factory";
-import {
-  getProductIntegration,
-  parseGithubConfig,
-} from "@/lib/integrations";
+import { ensureWorkspace } from "@/lib/factory";
+import { getGithubTokenWithSource, resolveRepo } from "@/lib/integrations/local";
 import { getPublicOrganizationConnection } from "@/lib/integrations/connections";
 import { githubOAuthConfigured } from "@/lib/integrations/github/oauth";
 
@@ -18,17 +11,12 @@ export default async function GithubConnectorPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    product?: string;
     error?: string;
     connected?: string;
   }>;
 }) {
   const viewer = await getViewer();
-  const {
-    product: productParam,
-    error,
-    connected: connectedParam,
-  } = await searchParams;
+  const { error, connected: connectedParam } = await searchParams;
   if (!viewer) {
     return (
       <div className="m-6 rounded-xl bg-[var(--console-surface)] p-8 text-center shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)] md:m-10">
@@ -40,26 +28,23 @@ export default async function GithubConnectorPage({
   }
 
   const org = await ensureWorkspace(viewer);
-  const [products, oauthConnection] = await Promise.all([
-    listProducts(org.id),
+  const [oauthConnection, repo, token] = await Promise.all([
     getPublicOrganizationConnection(org.id, "github"),
+    resolveRepo(),
+    getGithubTokenWithSource(org.id),
   ]);
-
-  const options: GithubProductOption[] = await Promise.all(
-    products.map(async (product) => {
-      const integration = await getProductIntegration(product.id, "github");
-      const config = integration ? parseGithubConfig(integration.config) : null;
-      return {
-        id: product.id,
-        name: product.name,
-        owner: config?.owner,
-        repo: config?.repo,
-        baseBranch: config?.baseBranch,
-        headBranchPrefix: config?.headBranchPrefix,
-        connected: Boolean(config),
-      };
-    }),
-  );
+  const tokenLabel = !token
+    ? "None — PRs, checks and merges run as dry-runs. Run gh auth login or set GITHUB_TOKEN."
+    : token.source === "oauth"
+      ? "Workspace OAuth connection"
+      : token.source === "env"
+        ? "GITHUB_TOKEN / GH_TOKEN from the environment"
+        : "Your local gh CLI login (gh auth token)";
+  const repoLabel = repo
+    ? `${repo.owner}/${repo.repo} (base ${repo.baseBranch}) — from ${
+        repo.source === "env" ? "CONSOL_GITHUB_REPO" : "this checkout's git origin"
+      }`
+    : "None found — set CONSOL_GITHUB_REPO=owner/repo in .env.local";
 
   const oauthConnected =
     oauthConnection?.status === "connected" &&
@@ -79,10 +64,26 @@ export default async function GithubConnectorPage({
           GitHub
         </h1>
         <p className="mt-1 max-w-xl text-[13px] text-[var(--console-muted)]">
-          Connect a GitHub account to this workspace via OAuth, then optionally
-          bind default repositories to products.
+          Consol uses your local git remote and gh login by default. A work
+          item can target another repo via its Repository input; OAuth is
+          optional.
         </p>
       </div>
+
+      <dl className="grid gap-3 rounded-xl bg-[var(--console-surface)] p-5 text-[13px] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]">
+        <div>
+          <dt className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--console-faint)]">
+            Default repository
+          </dt>
+          <dd className="mt-1 text-[var(--console-ink)]">{repoLabel}</dd>
+        </div>
+        <div>
+          <dt className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--console-faint)]">
+            Credentials
+          </dt>
+          <dd className="mt-1 text-[var(--console-ink)]">{tokenLabel}</dd>
+        </div>
+      </dl>
 
       <GithubOauthCard
         oauthAppConfigured={githubOAuthConfigured()}
@@ -92,12 +93,6 @@ export default async function GithubConnectorPage({
         scope={oauthConnection?.scope}
         error={error ?? null}
         justConnected={connectedParam === "1"}
-      />
-
-      <GithubIntegrationForm
-        products={options}
-        initialProductId={productParam}
-        oauthConnected={oauthConnected}
       />
     </div>
   );
