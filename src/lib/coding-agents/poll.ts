@@ -13,6 +13,7 @@ import {
   type AgentRun,
 } from "@/lib/integrations/agent-runs";
 import { getCodingAgent } from "@/lib/coding-agents";
+import { BUILD_AGENT_LABEL } from "@/lib/issues/agent-labels";
 import {
   addWorkItemExternalLink,
   listWorkItemExternalLinks,
@@ -119,7 +120,8 @@ export async function pollAgentRun(
       summary: `Unknown coding agent provider: ${run.provider}`,
     };
   }
-  const label = agent.name;
+  // User-facing copy uses Consol's role name, not the provider (agent.name).
+  const label = BUILD_AGENT_LABEL;
 
   let remote;
   try {
@@ -175,7 +177,7 @@ export async function pollAgentRun(
       stageKey: "build",
       stageType: "script",
       outcome: "failure",
-      summary: `${label} build ${nextStatus}: ${remote.text || "no details"}`,
+      summary: `Build ${nextStatus}: ${remote.text || "no details"}`,
       createdBy: actorSub,
       metadata: {
         agentRunId: run.id,
@@ -186,14 +188,14 @@ export async function pollAgentRun(
       processId: process.id,
       workItemId: item.id,
       role: "system",
-      content: `${label} build ended with ${nextStatus}.`,
+      content: `Build ended with ${nextStatus}.`,
       authorName: label,
     });
     return {
       run: updated,
       changed: true,
       advanced: false,
-      summary: `${label} build ${nextStatus}`,
+      summary: `Build ${nextStatus}`,
     };
   }
 
@@ -214,8 +216,8 @@ export async function pollAgentRun(
   const onBuild = current?.stage_key === "build";
   let advanced = false;
   let summary = prUrl
-    ? `${label} build finished with PR ${prUrl}`
-    : `${label} build finished`;
+    ? `Build finished with PR ${prUrl}`
+    : "Build finished";
 
   if (onBuild && prUrl) {
     const advance = await advanceWorkItem({
@@ -249,11 +251,11 @@ export async function pollAgentRun(
       stageKey: "build",
       stageType: "script",
       outcome: "failure",
-      summary: `${label} build finished without a pull request URL.`,
+      summary: "Build finished without a pull request URL.",
       createdBy: actorSub,
       metadata: { agentRunId: run.id },
     });
-    summary = `${label} build finished without a pull request URL.`;
+    summary = "Build finished without a pull request URL.";
   }
 
   return { run: updated, changed: true, advanced, summary };

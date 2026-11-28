@@ -11,6 +11,7 @@ import {
   listWorkItemExternalLinks,
 } from "@/lib/integrations";
 import { resolveRepo } from "@/lib/integrations/local";
+import { BUILD_AGENT_LABEL } from "@/lib/issues/agent-labels";
 import type { ScriptRunInput, ScriptRunResult } from "@/lib/flows/scripts/types";
 
 function alreadyHasGithubPr(body: string): string | null {
@@ -118,7 +119,7 @@ export async function runCodingAgentBuild(
     return {
       ok: true,
       outcome: "pending",
-      summary: `${agent.name} build already in progress (${active.status}). Agent: ${active.agent_url || active.external_agent_id}`,
+      summary: `Build already in progress (${active.status}). Agent: ${active.agent_url || active.external_agent_id}`,
     };
   }
 
@@ -195,29 +196,29 @@ export async function runCodingAgentBuild(
         status: "FINISHED",
         prUrl: launched.prUrl,
         branch: launched.branch ?? undefined,
-        resultSummary: launched.text ?? `${agent.name} build finished.`,
+        resultSummary: launched.text ?? "Build finished.",
       });
       return {
         ok: true,
         outcome: "success",
         summary: launched.dryRun
-          ? `Dry-run ${agent.name} build finished and opened ${launched.prUrl}`
-          : `${agent.name} build finished and opened ${launched.prUrl}`,
+          ? `Dry-run build finished and opened ${launched.prUrl}`
+          : `Build finished and opened ${launched.prUrl}`,
       };
     }
 
     return {
       ok: true,
       outcome: "pending",
-      summary: `${agent.name} agent started (${launched.externalAgentId}). Track progress at ${agentRun.agent_url}.`,
+      summary: `${BUILD_AGENT_LABEL} started (${launched.externalAgentId}). Track progress at ${agentRun.agent_url}.`,
     };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : `Unknown ${agent.name} error`;
+      error instanceof Error ? error.message : "Unknown build agent error";
     return {
       ok: false,
       outcome: "failure",
-      summary: `${agent.name} build failed: ${message}`,
+      summary: `Build failed: ${message}`,
     };
   }
 }
