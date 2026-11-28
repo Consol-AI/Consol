@@ -9,6 +9,7 @@
     "start:web": "next start -H 0.0.0.0",
     "worker": "tsx src/worker.ts",
     "lint": "eslint",
+    "test": "node --import tsx --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "agents:serve": "node scripts/agents-serve.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "db:railway-env": "node scripts/railway-db-env.mjs",

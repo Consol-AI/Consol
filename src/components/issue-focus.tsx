@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -8,7 +8,6 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
-  Clock,
   ExternalLink,
   GitPullRequest,
   Loader2,
@@ -17,7 +16,6 @@ import {
   RotateCcw,
   ShieldCheck,
   Square,
-  Terminal,
   X,
 } from "lucide-react";
 import {
@@ -25,6 +23,12 @@ import {
   moveWorkItemAction,
   updateWorkItemAction,
 } from "@/app/actions";
+import {
+  ActivityList,
+  WorkingNowPanel,
+  card,
+  scriptVerbs,
+} from "@/components/agent-activity";
 import { AiPanel } from "@/components/ai-panel";
 import { FlowControls } from "@/components/flow-controls";
 import { LiveRefresh } from "@/components/live-refresh";
@@ -34,11 +38,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { parseStageConfig } from "@/lib/flows/stage-config";
 import { legalOutcomesForStage } from "@/lib/flows/transitions";
+import {
+  scrubVendorNames,
+  stageDescriptionForDisplay,
+} from "@/lib/issues/agent-labels";
 import { splitBriefSections, type AgentOutput } from "@/lib/issues/brief-sections";
 import {
   formatRelativeTime,
   latestEventForStage,
-  stageMeta,
   stageProgressState,
 } from "@/lib/issues/stage-meta";
 import type {
@@ -73,74 +80,8 @@ type Props = {
   defaultModelRef?: string | null;
 };
 
-const card =
-  "overflow-hidden rounded-xl bg-[var(--console-surface)] shadow-[var(--console-shadow)] ring-1 ring-[var(--console-line)]";
-
-function isCodingAgentPath(path: unknown): boolean {
-  const value = String(path ?? "");
-  return value === "coding-agent" || value === "cursor-build";
-}
-
 function titleCase(value: string): string {
   return value ? value[0].toUpperCase() + value.slice(1) : value;
-}
-
-/** What a script stage does, phrased as an action and as ongoing work. */
-function scriptVerbs(stage: Stage): { action: string; working: string; icon: typeof Terminal } {
-  const config = parseStageConfig(stage.config);
-  const path = String(config.path ?? "");
-  if (stage.stage_key === "build" || isCodingAgentPath(path)) {
-    return { action: "Run build", working: "Coding agent is building", icon: GitPullRequest };
-  }
-  if (stage.stage_key === "validate" || path === "validate-pr-checks") {
-    return { action: "Run checks", working: "Waiting on CI checks", icon: Terminal };
-  }
-  if (stage.stage_key === "merge" || path === "merge-pr") {
-    return { action: "Merge pull request", working: "Merging the pull request", icon: GitPullRequest };
-  }
-  if (stage.stage_key === "open-pr" || path === "open-pr") {
-    return { action: "Open pull request", working: "Opening a pull request", icon: GitPullRequest };
-  }
-  return { action: "Run script", working: `Running ${stage.name}`, icon: Terminal };
-}
-
-// One shared 1s clock for live elapsed timers; null during SSR/hydration.
-let clockListeners = new Set<() => void>();
-let clockTimer: number | null = null;
-function subscribeClock(listener: () => void) {
-  clockListeners.add(listener);
-  if (clockTimer === null) {
-    clockTimer = window.setInterval(() => clockListeners.forEach((l) => l()), 1000);
-  }
-  return () => {
-    clockListeners.delete(listener);
-    if (clockListeners.size === 0 && clockTimer !== null) {
-      window.clearInterval(clockTimer);
-      clockTimer = null;
-      clockListeners = new Set();
-    }
-  };
-}
-function useNow(): number | null {
-  return useSyncExternalStore(
-    subscribeClock,
-    () => Math.floor(Date.now() / 1000) * 1000,
-    () => null,
-  );
-}
-
-function Elapsed({ since }: { since: string }) {
-  const now = useNow();
-  const start = new Date(since).getTime();
-  if (now === null || Number.isNaN(start)) return null;
-  const seconds = Math.max(0, Math.floor((now - start) / 1000));
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return (
-    <span className="tabular-nums">
-      {m > 0 ? `${m}m ${String(s).padStart(2, "0")}s` : `${s}s`}
-    </span>
-  );
 }
 
 export function IssueFocus({
@@ -648,7 +589,6 @@ function NowPanel(props: NowPanelProps) {
     onAdvance,
     onMove,
   } = props;
-  const now = useNow();
 
   if (item.status === "done") {
     return (
@@ -712,93 +652,14 @@ function NowPanel(props: NowPanelProps) {
 
   // 1. Something is running on the worker (or an external coding agent).
   if (jobState.active || agentRunActive) {
-    const agentName = titleCase(String(config.agentKey ?? "Agent"));
-    const verbs = current.stage_type === "script" ? scriptVerbs(current) : null;
-    const headline =
-      current.stage_type === "agent"
-        ? `${agentName} is drafting the ${current.name.toLowerCase()}`
-        : verbs?.working ?? `Working on ${current.name}`;
-    const queued = jobState.active?.status === "queued" && !agentRunActive;
-    const since = jobState.active?.since ?? latestAgentRun?.created_at ?? "";
-    const queuedLong =
-      queued && since && now !== null && now - new Date(since).getTime() > 30_000;
     return (
-      <section className={cn(card, "ring-[var(--console-accent)]/30")}>
-        <div className="relative overflow-hidden bg-[var(--console-accent-soft)] px-5 py-4">
-          <div className="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-[var(--console-accent)]/15">
-            <div className="h-full w-1/3 animate-[now-sweep_1.6s_ease-in-out_infinite] bg-[var(--console-accent)]" />
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="relative mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-[var(--console-accent)] ring-1 ring-[var(--console-accent)]/20">
-              {current.stage_type === "agent" ? (
-                <Bot className="size-4.5" />
-              ) : (
-                <Terminal className="size-4" />
-              )}
-              <span className="absolute -top-0.5 -right-0.5 flex size-2.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--console-accent)] opacity-60" />
-                <span className="relative inline-flex size-2.5 rounded-full bg-[var(--console-accent)]" />
-              </span>
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--console-accent)]">
-                {queued ? "Queued" : "Working now"}
-              </p>
-              <p className="mt-0.5 text-[16px] font-semibold text-[var(--console-ink)]">
-                {headline}
-              </p>
-              {current.description ? (
-                <p className="mt-0.5 text-[12px] text-[var(--console-muted)]">
-                  {current.description}
-                </p>
-              ) : null}
-            </div>
-            {since ? (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white px-2 py-1 text-[12px] text-[var(--console-muted)] ring-1 ring-[var(--console-line)]">
-                <Clock className="size-3" />
-                <Elapsed since={since} />
-              </span>
-            ) : null}
-          </div>
-          {queuedLong ? (
-            <p className="mt-3 text-[12px] text-amber-800">
-              Still waiting for a worker to pick this up — is{" "}
-              <code className="rounded bg-white px-1">npm run worker</code> running?
-            </p>
-          ) : null}
-        </div>
-        {latestAgentRun && agentRunActive ? (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-[var(--console-line)] px-5 py-3 text-[12px]">
-            <span className="text-[var(--console-muted)]">
-              {titleCase(latestAgentRun.provider)} ·{" "}
-              <span className="font-medium text-[var(--console-ink)]">
-                {latestAgentRun.status.toLowerCase().replace(/_/g, " ")}
-              </span>
-            </span>
-            {latestAgentRun.branch ? (
-              <code className="rounded bg-[var(--console-panel)] px-1.5 py-0.5 text-[11px]">
-                {latestAgentRun.branch}
-              </code>
-            ) : null}
-            {latestAgentRun.agent_url ? (
-              <a
-                href={latestAgentRun.agent_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[var(--console-accent)] hover:underline"
-              >
-                Watch the agent <ExternalLink className="size-3" />
-              </a>
-            ) : null}
-            {latestAgentRun.result_summary ? (
-              <p className="w-full text-[var(--console-muted)]">
-                {latestAgentRun.result_summary}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-        <PrList links={props.prLinks} />
-      </section>
+      <WorkingNowPanel
+        current={current}
+        jobState={jobState}
+        latestAgentRun={latestAgentRun}
+        agentRunActive={agentRunActive}
+        footer={<PrList links={props.prLinks} />}
+      />
     );
   }
 
@@ -939,7 +800,7 @@ function NowPanel(props: NowPanelProps) {
           </p>
           {current.description ? (
             <p className="text-[12px] text-[var(--console-muted)]">
-              {current.description}
+              {stageDescriptionForDisplay(current)}
             </p>
           ) : null}
         </div>
@@ -971,7 +832,7 @@ function NowPanel(props: NowPanelProps) {
       {lastFailed && lastRun?.summary ? (
         <div className="flex items-start gap-2 border-t border-red-100 bg-red-50 px-5 py-3 text-[12px] text-red-800">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-          <p className="min-w-0 flex-1">{lastRun.summary}</p>
+          <p className="min-w-0 flex-1">{scrubVendorNames(lastRun.summary)}</p>
           <span className="shrink-0 text-red-700/70">
             {formatRelativeTime(lastRun.created_at)}
           </span>
@@ -1003,7 +864,7 @@ function ReviewEvidence({
   if (!recent.length && !prLinks.length) {
     return current.description ? (
       <p className="px-5 py-4 text-[13px] text-[var(--console-muted)]">
-        {current.description}
+        {stageDescriptionForDisplay(current)}
       </p>
     ) : null;
   }
@@ -1024,7 +885,10 @@ function ReviewEvidence({
                   {names.get(event.stage_key) ?? event.stage_key}
                 </span>
                 {event.summary ? (
-                  <span className="text-[var(--console-muted)]"> — {event.summary}</span>
+                  <span className="text-[var(--console-muted)]">
+                    {" "}
+                    — {scrubVendorNames(event.summary)}
+                  </span>
                 ) : null}
               </span>
             </li>
@@ -1066,66 +930,5 @@ function PrList({
         </a>
       ))}
     </div>
-  );
-}
-
-function ActivityList({ runEvents }: { runEvents: StageRunEvent[] }) {
-  const [showAll, setShowAll] = useState(false);
-  const events = [...runEvents].reverse();
-  const visible = showAll ? events : events.slice(0, 6);
-  return (
-    <section className={card}>
-      <header className="border-b border-[var(--console-line)] px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-[var(--console-ink)]">
-          Activity
-        </h2>
-      </header>
-      {events.length === 0 ? (
-        <p className="px-4 py-5 text-[13px] text-[var(--console-muted)]">
-          Nothing has run yet.
-        </p>
-      ) : (
-        <>
-          <ul className="space-y-0 px-4 py-3">
-            {visible.map((event) => {
-              const meta = stageMeta(event.stage_type);
-              const Icon = meta.icon;
-              const failed = event.outcome === "failure" || event.outcome === "reject";
-              return (
-                <li key={event.id} className="flex gap-3 py-1.5">
-                  <Icon
-                    className={cn(
-                      "mt-0.5 size-3.5 shrink-0",
-                      failed ? "text-red-500" : "text-[var(--console-faint)]",
-                    )}
-                  />
-                  <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-[var(--console-muted)]">
-                    <span className="font-medium text-[var(--console-ink)]">
-                      {event.stage_key || meta.label}
-                    </span>
-                    {event.outcome ? (
-                      <span className={cn(failed && "text-red-600")}> · {event.outcome}</span>
-                    ) : null}
-                    {event.summary ? <> — {event.summary}</> : null}
-                  </p>
-                  <span className="shrink-0 text-[11px] tabular-nums text-[var(--console-faint)]">
-                    {formatRelativeTime(event.created_at)}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-          {events.length > 6 ? (
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="w-full border-t border-[var(--console-line)] px-4 py-2 text-left text-[12px] text-[var(--console-muted)] hover:bg-[var(--console-hover)]"
-            >
-              {showAll ? "Show less" : `Show all ${events.length}`}
-            </button>
-          ) : null}
-        </>
-      )}
-    </section>
   );
 }

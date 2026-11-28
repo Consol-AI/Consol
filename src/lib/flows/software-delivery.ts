@@ -61,7 +61,7 @@ export const softwareDeliveryFlow: FlowDefinition = {
       type: "script",
       name: "Build",
       description:
-        "A coding agent (Cursor Cloud Agent, or Claude Code locally) implements the change and opens a PR.",
+        "The build agent implements the change and opens a pull request.",
       path: "coding-agent",
       agent: "auto",
     },
